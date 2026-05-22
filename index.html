@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>智能记账 App - 首页原型</title>
+    <link rel="stylesheet" href="./styles.css?v=cool-detail-bg" />
+  </head>
+  <body>
+    <main class="preview-stage">
+      <section class="device-shell" aria-label="记账 App 第一页原型">
+        <div class="side-button side-button-left-top"></div>
+        <div class="side-button side-button-left-middle"></div>
+        <div class="side-button side-button-right"></div>
+
+        <div class="device-bezel">
+          <div class="dynamic-island" aria-hidden="true"></div>
+          <div class="front-camera" aria-hidden="true"></div>
+
+          <div
+            class="app-screen"
+            data-active-tab="明细"
+            data-sheet-open="false"
+            data-withdraw-open="false"
+            data-report-open="false"
+          >
+            <header class="calendar-zone" aria-label="日期选择">
+              <button
+                class="month-toggle"
+                type="button"
+                aria-label="展开月份"
+                aria-expanded="false"
+              >
+                <span class="chevron" aria-hidden="true"></span>
+              </button>
+
+              <div class="month-popover" hidden>
+                <button type="button" class="month-option">2026年4月</button>
+                <button type="button" class="month-option is-active">2026年5月</button>
+                <button type="button" class="month-option">2026年6月</button>
+              </div>
+
+              <div class="date-strip" role="listbox" aria-label="日期选择"></div>
+              <div class="selected-date-chip" aria-live="polite">
+                <span class="selected-date-text">今天</span>
+                <strong class="selected-date-mode">可记账</strong>
+              </div>
+              <div class="daily-total-panel" aria-label="当天收支汇总">
+                <dl class="daily-total-list">
+                  <div>
+                    <dt>收入</dt>
+                    <dd class="daily-income-total">+￥0</dd>
+                  </div>
+                  <div>
+                    <dt>支出</dt>
+                    <dd class="daily-expense-total">￥0</dd>
+                  </div>
+                  <div>
+                    <dt>结余</dt>
+                    <dd class="daily-balance-total">￥0</dd>
+                  </div>
+                </dl>
+              </div>
+            </header>
+
+            <div class="interaction-toast" role="status" aria-live="polite"></div>
+
+            <section class="data-view tab-view" data-view="数据" aria-label="数据分析" hidden>
+              <header class="data-topbar">
+                <div></div>
+                <div class="flow-toggle" role="tablist" aria-label="收支类型">
+                  <button class="flow-option is-active" type="button" data-flow="expense">支出</button>
+                  <button class="flow-option" type="button" data-flow="income">收入</button>
+                </div>
+                <button class="report-button" type="button" aria-label="生成智能报告">
+                  <span class="report-icon" aria-hidden="true"></span>
+                  报告
+                </button>
+              </header>
+
+              <div class="period-tabs" role="tablist" aria-label="时间周期">
+                <button class="period-option is-active" type="button" data-period="week">周</button>
+                <button class="period-option" type="button" data-period="month">月</button>
+                <button class="period-option" type="button" data-period="year">年</button>
+              </div>
+
+              <section class="chart-panel" aria-label="周期趋势">
+                <div class="chart-heading">
+                  <div>
+                    <h2 class="cycle-title">本周</h2>
+                    <p class="cycle-subtitle">总支出：0.00元</p>
+                    <p class="cycle-average">平均值：0.00元</p>
+                  </div>
+                  <strong class="cycle-total">￥0</strong>
+                </div>
+                <div class="trend-chart" aria-label="折线图"></div>
+              </section>
+
+              <section class="rank-panel" aria-label="支出排行榜">
+                <div class="rank-heading">
+                  <h2 class="rank-title">支出排行榜</h2>
+                  <span class="rank-period">本周</span>
+                </div>
+                <div class="rank-list"></div>
+              </section>
+            </section>
+
+            <section class="assets-view tab-view" data-view="资产" aria-label="资产" hidden>
+              <section class="asset-card bill-card" aria-label="账单总览">
+                <header class="asset-card-header">
+                  <h2>账单</h2>
+                  <div class="asset-header-actions">
+                    <button
+                      class="currency-switch"
+                      type="button"
+                      aria-label="更换币种"
+                      aria-expanded="false"
+                    >
+                      <span class="currency-code">CNY</span>
+                      <span class="currency-caret" aria-hidden="true"></span>
+                    </button>
+                    <span class="asset-chevron" aria-hidden="true"></span>
+                  </div>
+                </header>
+
+                <div class="currency-popover" hidden>
+                  <button class="currency-option is-active" type="button" data-currency="CNY">
+                    <span>CNY</span>
+                    <small>人民币</small>
+                  </button>
+                  <button class="currency-option" type="button" data-currency="USD">
+                    <span>USD</span>
+                    <small>美元</small>
+                  </button>
+                  <button class="currency-option" type="button" data-currency="EUR">
+                    <span>EUR</span>
+                    <small>欧元</small>
+                  </button>
+                  <button class="currency-option" type="button" data-currency="JPY">
+                    <span>JPY</span>
+                    <small>日元</small>
+                  </button>
+                  <button class="currency-option" type="button" data-currency="HKD">
+                    <span>HKD</span>
+                    <small>港币</small>
+                  </button>
+                </div>
+
+                <div class="bill-summary">
+                  <div class="bill-month">
+                    <strong class="asset-month-number">05</strong>
+                    <span>月</span>
+                  </div>
+                  <span class="bill-divider" aria-hidden="true"></span>
+                  <dl class="bill-metrics">
+                    <div>
+                      <dt>收入</dt>
+                      <dd class="asset-month-income">0.00</dd>
+                    </div>
+                    <div>
+                      <dt>支出</dt>
+                      <dd class="asset-month-expense">0.00</dd>
+                    </div>
+                    <div>
+                      <dt>结余</dt>
+                      <dd class="asset-month-balance">0.00</dd>
+                    </div>
+                  </dl>
+                </div>
+              </section>
+
+              <section class="asset-card budget-card" aria-label="月度预算">
+                <header class="budget-header">
+                  <h2><span class="asset-budget-month">05</span>月总预算</h2>
+                  <button class="budget-button" type="button">
+                    <span aria-hidden="true">+</span>
+                    设置预算
+                  </button>
+                </header>
+
+                <div class="budget-content">
+                  <div class="budget-ring" aria-label="剩余预算比例">
+                    <div class="budget-ring-core">
+                      <span>剩余</span>
+                      <strong class="budget-percent">0%</strong>
+                    </div>
+                  </div>
+
+                  <dl class="budget-lines">
+                    <div class="budget-line is-emphasis">
+                      <dt>剩余预算：</dt>
+                      <dd class="budget-remaining">0.00</dd>
+                    </div>
+                    <div class="budget-line">
+                      <dt>本月预算：</dt>
+                      <dd class="budget-total">0.00</dd>
+                    </div>
+                    <div class="budget-line">
+                      <dt>本月支出：</dt>
+                      <dd class="budget-spent">0.00</dd>
+                    </div>
+                  </dl>
+                </div>
+              </section>
+
+              <section class="asset-card manager-card" aria-label="资产管家">
+                <header class="asset-card-header">
+                  <h2>资产管家</h2>
+                  <span class="asset-chevron" aria-hidden="true"></span>
+                </header>
+
+                <dl class="manager-metrics">
+                  <div>
+                    <dt>净资产</dt>
+                    <dd class="asset-net">0.00</dd>
+                  </div>
+                  <div>
+                    <dt>资产</dt>
+                    <dd class="asset-total">0.00</dd>
+                  </div>
+                  <div>
+                    <dt>负债</dt>
+                    <dd class="asset-liability">0.00</dd>
+                  </div>
+                </dl>
+              </section>
+            </section>
+
+            <section class="ledger-space" aria-label="单次记账详情">
+              <div class="ledger-list" aria-live="polite"></div>
+            </section>
+
+            <section class="action-dock" aria-label="主要操作">
+              <button class="record-button" type="button">记账</button>
+
+              <nav class="quick-tabs" aria-label="底部入口">
+                <button class="quick-tab is-current" type="button" data-tab="明细">明细</button>
+                <button class="quick-tab" type="button" data-tab="数据">数据</button>
+                <button class="quick-tab" type="button" data-tab="资产">资产</button>
+              </nav>
+            </section>
+
+            <div class="sheet-backdrop" aria-hidden="true"></div>
+
+            <section
+              class="entry-sheet"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="entry-title"
+              hidden
+            >
+              <div class="sheet-handle" aria-hidden="true"></div>
+              <div class="sheet-header">
+                <h2 id="entry-title">快速记账</h2>
+                <button class="sheet-close" type="button" aria-label="关闭">×</button>
+              </div>
+              <p class="entry-date-context">入账到今天</p>
+
+              <form class="entry-form">
+                <div class="entry-flow-toggle" role="tablist" aria-label="记账类型">
+                  <button class="entry-flow-option is-active" type="button" data-entry-flow="expense">
+                    支出
+                  </button>
+                  <button class="entry-flow-option" type="button" data-entry-flow="income">
+                    收入
+                  </button>
+                </div>
+
+                <label class="input-label" for="expense-input">今天买了什么？</label>
+                <div class="input-row">
+                  <input
+                    id="expense-input"
+                    class="expense-input"
+                    name="expense"
+                    type="text"
+                    autocomplete="off"
+                    inputmode="decimal"
+                    placeholder="海底捞 422"
+                  />
+                  <button class="parse-button" type="submit">识别</button>
+                </div>
+                <p class="form-error" role="alert"></p>
+
+                <div class="quick-examples" aria-label="快速示例">
+                  <button type="button" data-example="早餐 12">早餐 12</button>
+                  <button type="button" data-example="打车 25">打车 25</button>
+                  <button type="button" data-example="超市日用品 156">日用品 156</button>
+                </div>
+              </form>
+
+              <div class="confirm-card" hidden>
+                <p class="confirm-kicker">语义识别结果</p>
+                <strong class="confirm-note"></strong>
+                <dl class="confirm-list">
+                  <div>
+                    <dt>分类</dt>
+                    <dd class="confirm-category"></dd>
+                  </div>
+                  <div>
+                    <dt>金额</dt>
+                    <dd class="confirm-amount"></dd>
+                  </div>
+                  <div>
+                    <dt>入账日期</dt>
+                    <dd class="confirm-time">今天</dd>
+                  </div>
+                </dl>
+                <div class="confirm-actions">
+                  <button class="edit-result" type="button">修改</button>
+                  <button class="save-result" type="button">确认</button>
+                </div>
+              </div>
+            </section>
+
+            <div class="withdraw-backdrop" aria-hidden="true"></div>
+
+            <section
+              class="withdraw-dialog"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="withdraw-title"
+              hidden
+            >
+              <p class="withdraw-kicker">撤回确认</p>
+              <h2 id="withdraw-title">撤回这笔记账？</h2>
+              <p class="withdraw-summary"></p>
+              <div class="withdraw-actions">
+                <button class="withdraw-cancel" type="button">否</button>
+                <button class="withdraw-confirm" type="button">是</button>
+              </div>
+            </section>
+
+            <div class="report-backdrop" aria-hidden="true"></div>
+
+            <section
+              class="report-dialog"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="report-title"
+              hidden
+            >
+              <div class="report-header">
+                <div>
+                  <p class="report-kicker">智能报告</p>
+                  <h2 id="report-title">本周支出报告</h2>
+                </div>
+                <button class="report-close" type="button" aria-label="关闭报告">×</button>
+              </div>
+              <div class="report-body"></div>
+            </section>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script src="./app.js?v=cool-theme"></script>
+  </body>
+</html>
