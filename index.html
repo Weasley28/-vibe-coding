@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>智能记账 App - 首页原型</title>
-    <link rel="stylesheet" href="./styles.css?v=category-cards" />
+    <link rel="stylesheet" href="./styles.css?v=currency-labels-numeric-amounts" />
   </head>
   <body>
     <main class="preview-stage">
@@ -49,15 +49,15 @@
                 <dl class="daily-total-list">
                   <div>
                     <dt>收入</dt>
-                    <dd class="daily-income-total">+￥0</dd>
+                    <dd class="daily-income-total">+0</dd>
                   </div>
                   <div>
                     <dt>支出</dt>
-                    <dd class="daily-expense-total">￥0</dd>
+                    <dd class="daily-expense-total">0</dd>
                   </div>
                   <div>
                     <dt>结余</dt>
-                    <dd class="daily-balance-total">￥0</dd>
+                    <dd class="daily-balance-total">0</dd>
                   </div>
                 </dl>
               </div>
@@ -88,10 +88,10 @@
                 <div class="chart-heading">
                   <div>
                     <h2 class="cycle-title">本周</h2>
-                    <p class="cycle-subtitle">总支出：0.00元</p>
-                    <p class="cycle-average">平均值：0.00元</p>
+                    <p class="cycle-subtitle">总支出：0.00</p>
+                    <p class="cycle-average">平均值：0.00</p>
                   </div>
-                  <strong class="cycle-total">￥0</strong>
+                  <strong class="cycle-total">0</strong>
                 </div>
                 <div class="trend-chart" aria-label="折线图"></div>
               </section>
@@ -116,7 +116,7 @@
                       aria-label="更换币种"
                       aria-expanded="false"
                     >
-                      <span class="currency-code">CNY</span>
+                      <span class="currency-code">人民币 ¥</span>
                       <span class="currency-caret" aria-hidden="true"></span>
                     </button>
                     <span class="asset-chevron" aria-hidden="true"></span>
@@ -125,24 +125,44 @@
 
                 <div class="currency-popover" hidden>
                   <button class="currency-option is-active" type="button" data-currency="CNY">
-                    <span>CNY</span>
-                    <small>人民币</small>
+                    <span>人民币</span>
+                    <small>¥</small>
                   </button>
                   <button class="currency-option" type="button" data-currency="USD">
-                    <span>USD</span>
-                    <small>美元</small>
+                    <span>美元</span>
+                    <small>$</small>
                   </button>
                   <button class="currency-option" type="button" data-currency="EUR">
-                    <span>EUR</span>
-                    <small>欧元</small>
+                    <span>欧元</span>
+                    <small>€</small>
                   </button>
                   <button class="currency-option" type="button" data-currency="JPY">
-                    <span>JPY</span>
-                    <small>日元</small>
+                    <span>日元</span>
+                    <small>¥</small>
                   </button>
                   <button class="currency-option" type="button" data-currency="HKD">
-                    <span>HKD</span>
-                    <small>港币</small>
+                    <span>港币</span>
+                    <small>HK$</small>
+                  </button>
+                  <button class="currency-option" type="button" data-currency="GBP">
+                    <span>英镑</span>
+                    <small>£</small>
+                  </button>
+                  <button class="currency-option" type="button" data-currency="AUD">
+                    <span>澳元</span>
+                    <small>A$</small>
+                  </button>
+                  <button class="currency-option" type="button" data-currency="CAD">
+                    <span>加元</span>
+                    <small>C$</small>
+                  </button>
+                  <button class="currency-option" type="button" data-currency="SGD">
+                    <span>新加坡元</span>
+                    <small>S$</small>
+                  </button>
+                  <button class="currency-option" type="button" data-currency="KRW">
+                    <span>韩元</span>
+                    <small>₩</small>
                   </button>
                 </div>
 
@@ -362,6 +382,6 @@
       </section>
     </main>
 
-    <script src="./app.js?v=monthly-chart-spacing"></script>
+    <script src="./app.js?v=currency-labels-numeric-amounts"></script>
   </body>
 </html>

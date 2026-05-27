@@ -93,6 +93,11 @@ const currencyProfiles = {
   EUR: { name: "欧元", symbol: "€", rate: 0.13, decimals: 2 },
   JPY: { name: "日元", symbol: "¥", rate: 22, decimals: 0 },
   HKD: { name: "港币", symbol: "HK$", rate: 1.09, decimals: 2 },
+  GBP: { name: "英镑", symbol: "£", rate: 0.11, decimals: 2 },
+  AUD: { name: "澳元", symbol: "A$", rate: 0.21, decimals: 2 },
+  CAD: { name: "加元", symbol: "C$", rate: 0.19, decimals: 2 },
+  SGD: { name: "新加坡元", symbol: "S$", rate: 0.18, decimals: 2 },
+  KRW: { name: "韩元", symbol: "₩", rate: 190, decimals: 0 },
 };
 const categoryColors = {
   餐饮: "#8fb9c6",
@@ -266,7 +271,10 @@ function formatEntryDate(date) {
 }
 
 function formatMoney(amount) {
-  return `￥${amount.toLocaleString("zh-CN", {
+  const sign = amount < 0 ? "-" : "";
+  const absoluteAmount = Math.abs(amount);
+
+  return `${sign}${absoluteAmount.toLocaleString("zh-CN", {
     minimumFractionDigits: amount % 1 === 0 ? 0 : 2,
     maximumFractionDigits: 2,
   })}`;
@@ -304,6 +312,12 @@ function getCurrencyProfile() {
   return currencyProfiles[selectedCurrency] || currencyProfiles.CNY;
 }
 
+function formatCurrencyLabel(currency = selectedCurrency) {
+  const profile = currencyProfiles[currency] || currencyProfiles.CNY;
+
+  return `${profile.name} ${profile.symbol}`;
+}
+
 function fromBaseCurrency(amount) {
   return amount * getCurrencyProfile().rate;
 }
@@ -321,7 +335,11 @@ function formatAssetMoney(amount) {
     maximumFractionDigits: profile.decimals,
   });
 
-  return `${sign}${profile.symbol}${absoluteAmount}`;
+  return `${sign}${absoluteAmount}`;
+}
+
+function formatAssetSummaryMoney(amount) {
+  return formatAssetMoney(amount);
 }
 
 function formatAssetInputAmount(amount) {
@@ -722,8 +740,8 @@ function renderDataView() {
   const periodText = periodLabels[selectedPeriod];
 
   cycleTitle.textContent = periodText;
-  cycleSubtitle.textContent = `总${flowText}：${formatPlainMoney(total)}元`;
-  cycleAverage.textContent = `平均值：${formatPlainMoney(average)}元`;
+  cycleSubtitle.textContent = `总${flowText}：${formatPlainMoney(total)}`;
+  cycleAverage.textContent = `平均值：${formatPlainMoney(average)}`;
   cycleTotal.textContent = formatMoney(total);
   rankTitle.textContent = `${flowText}排行榜`;
   rankPeriod.textContent = periodText;
@@ -754,9 +772,9 @@ function renderAssetsView() {
 
   assetMonthNumber.textContent = monthText;
   assetBudgetMonth.textContent = monthText;
-  assetMonthIncome.textContent = formatAssetMoney(monthIncome);
-  assetMonthExpense.textContent = formatAssetMoney(monthExpense);
-  assetMonthBalance.textContent = formatAssetMoney(monthBalance);
+  assetMonthIncome.textContent = formatAssetSummaryMoney(monthIncome);
+  assetMonthExpense.textContent = formatAssetSummaryMoney(monthExpense);
+  assetMonthBalance.textContent = formatAssetSummaryMoney(monthBalance);
   budgetRemaining.textContent = formatAssetMoney(remainingBudget);
   budgetTotal.textContent = formatAssetMoney(monthlyBudget);
   budgetSpent.textContent = formatAssetMoney(monthExpense);
@@ -766,10 +784,20 @@ function renderAssetsView() {
   assetNet.textContent = formatAssetMoney(totalIncome - totalExpense);
   assetTotal.textContent = formatAssetMoney(totalIncome);
   assetLiability.textContent = formatAssetMoney(totalExpense);
-  currencyCode.textContent = selectedCurrency;
-  currencySwitch.setAttribute("aria-label", `更换币种，当前为${getCurrencyProfile().name}`);
+  currencyCode.textContent = formatCurrencyLabel();
+  currencySwitch.setAttribute("aria-label", `更换币种，当前为${formatCurrencyLabel()}`);
 
   currencyOptions.forEach((option) => {
+    const profile = currencyProfiles[option.dataset.currency];
+    const name = option.querySelector("span");
+    const symbol = option.querySelector("small");
+
+    if (profile) {
+      name.textContent = profile.name;
+      symbol.textContent = profile.symbol;
+      option.setAttribute("aria-label", `${profile.name} ${profile.symbol}`);
+    }
+
     option.classList.toggle("is-active", option.dataset.currency === selectedCurrency);
   });
 }
@@ -797,7 +825,7 @@ function selectCurrency(currency) {
 function updateMonthlyBudget() {
   const currentBudget = readMonthlyBudget();
   const promptValue = window.prompt(
-    `请输入${today.getMonth() + 1}月预算（${selectedCurrency}）`,
+    `请输入${today.getMonth() + 1}月预算（${formatCurrencyLabel()}）`,
     currentBudget > 0 ? formatAssetInputAmount(currentBudget) : "",
   );
 
@@ -833,8 +861,8 @@ function renderReport() {
   reportBody.innerHTML = `
     <section class="report-section">
       <h3>数据分析</h3>
-      <p>${periodText}共记录 ${recordCount} 笔${flowText}，总${flowText} ${formatPlainMoney(total)} 元，周期平均值为 ${formatPlainMoney(average)} 元。${
-        peakPoint.value > 0 ? `${peakPoint.label} 是峰值点，金额为 ${formatPlainMoney(peakPoint.value)} 元。` : `当前周期还没有可分析的${flowText}峰值。`
+      <p>${periodText}共记录 ${recordCount} 笔${flowText}，总${flowText} ${formatPlainMoney(total)}，周期平均值为 ${formatPlainMoney(average)}。${
+        peakPoint.value > 0 ? `${peakPoint.label} 是峰值点，金额为 ${formatPlainMoney(peakPoint.value)}。` : `当前周期还没有可分析的${flowText}峰值。`
       }</p>
     </section>
     <section class="report-section">
