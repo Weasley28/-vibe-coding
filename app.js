@@ -588,6 +588,29 @@ function buildCurrentDataSnapshot() {
   return { average, config, ranking, records, series, total };
 }
 
+function getMonthChartIndexes(points) {
+  const lastIndex = points.length - 1;
+  const indexes = new Set(
+    [1, 5, 10, 15, 20, 25]
+      .map((day) => day - 1)
+      .filter((index) => index >= 0 && index <= lastIndex),
+  );
+  const todayIndex = points.findIndex((point) => point.label === "今天");
+
+  indexes.add(lastIndex);
+
+  if (todayIndex >= 0) {
+    indexes.forEach((index) => {
+      if (index !== todayIndex && Math.abs(index - todayIndex) <= 2) {
+        indexes.delete(index);
+      }
+    });
+    indexes.add(todayIndex);
+  }
+
+  return indexes;
+}
+
 function renderTrendChart(series) {
   const width = 320;
   const height = 166;
@@ -606,22 +629,16 @@ function renderTrendChart(series) {
     return { ...item, x, y };
   });
   const pointString = points.map((point) => `${point.x},${point.y}`).join(" ");
-  const labelEvery = selectedPeriod === "month" ? 5 : 1;
-  const labels = points
-    .filter((point, index) => {
-      return (
-        selectedPeriod !== "month" ||
-        index === 0 ||
-        index === points.length - 1 ||
-        (index + 1) % labelEvery === 0 ||
-        point.label === "今天"
-      );
-    })
+  const monthDisplayIndexes = selectedPeriod === "month" ? getMonthChartIndexes(points) : null;
+  const displayPoints = monthDisplayIndexes
+    ? points.filter((_, index) => monthDisplayIndexes.has(index))
+    : points;
+  const labels = displayPoints
     .map((point) => {
       return `<text x="${point.x}" y="158" text-anchor="middle" class="chart-label">${point.label}</text>`;
     })
     .join("");
-  const circles = points
+  const circles = displayPoints
     .map((point) => {
       return `<circle cx="${point.x}" cy="${point.y}" r="4.5" class="chart-point"><title>${point.label} ${formatMoney(point.value)}</title></circle>`;
     })
