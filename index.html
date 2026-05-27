@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>智能记账 App - 首页原型</title>
-    <link rel="stylesheet" href="./styles.css?v=cool-detail-bg" />
+    <link rel="stylesheet" href="./styles.css?v=category-cards" />
   </head>
   <body>
     <main class="preview-stage">
@@ -266,6 +266,14 @@
                   </button>
                 </div>
 
+                <div class="entry-category-section">
+                  <div class="entry-category-heading">
+                    <span>先选类别</span>
+                    <small>再输入具体内容和金额</small>
+                  </div>
+                  <div class="entry-category-grid" role="listbox" aria-label="记账类别" tabindex="-1"></div>
+                </div>
+
                 <label class="input-label" for="expense-input">今天买了什么？</label>
                 <div class="input-row">
                   <input
@@ -274,7 +282,7 @@
                     name="expense"
                     type="text"
                     autocomplete="off"
-                    inputmode="text"
+                    
                     enterkeyhint="done"
                     placeholder="海底捞 422"
                   />
@@ -290,7 +298,7 @@
               </form>
 
               <div class="confirm-card" hidden>
-                <p class="confirm-kicker">语义识别结果</p>
+                <p class="confirm-kicker">记账确认</p>
                 <strong class="confirm-note"></strong>
                 <dl class="confirm-list">
                   <div>
@@ -354,6 +362,6 @@
       </section>
     </main>
 
-    <script src="./app.js?v=cool-theme"></script>
+    <script src="./app.js?v=category-cards"></script>
   </body>
 </html>

@@ -55,6 +55,7 @@ const entryTitle = document.querySelector("#entry-title");
 const entryDateContext = document.querySelector(".entry-date-context");
 const entryForm = document.querySelector(".entry-form");
 const entryFlowOptions = document.querySelectorAll(".entry-flow-option");
+const entryCategoryGrid = document.querySelector(".entry-category-grid");
 const inputLabel = document.querySelector(".input-label");
 const expenseInput = document.querySelector(".expense-input");
 const formError = document.querySelector(".form-error");
@@ -111,11 +112,52 @@ const expenseCategories = [
     name: "餐饮",
     icon: "🍜",
     keywords: [
-      "饭", "餐", "早餐", "午餐", "晚餐", "夜宵", "宵夜", "外卖",
-      "咖啡", "奶茶", "火锅", "海底捞", "淀粉肠", "烤肠", "小吃",
-      "烧烤", "炸鸡", "汉堡", "麻辣烫", "螺蛳粉", "米线", "拉面",
-      "包子", "饺子", "馄饨", "甜品", "蛋糕", "面包", "零食",
-      "水果", "饮料", "瑞幸", "星巴克", "麦当劳", "肯德基", "kfc",
+      "饭",
+      "餐",
+      "早餐",
+      "午餐",
+      "晚餐",
+      "夜宵",
+      "宵夜",
+      "外卖",
+      "咖啡",
+      "奶茶",
+      "火锅",
+      "海底捞",
+      "淀粉肠",
+      "烤肠",
+      "小吃",
+      "烧烤",
+      "串串",
+      "炸鸡",
+      "汉堡",
+      "披萨",
+      "麻辣烫",
+      "螺蛳粉",
+      "酸辣粉",
+      "米线",
+      "米粉",
+      "拉面",
+      "牛肉面",
+      "炒面",
+      "拌面",
+      "包子",
+      "饺子",
+      "馄饨",
+      "粥",
+      "甜品",
+      "蛋糕",
+      "面包",
+      "零食",
+      "水果",
+      "饮料",
+      "可乐",
+      "茶饮",
+      "瑞幸",
+      "星巴克",
+      "麦当劳",
+      "肯德基",
+      "kfc",
     ],
   },
   { name: "交通", icon: "🚗", keywords: ["打车", "地铁", "公交", "停车", "加油", "高铁", "机票"] },
@@ -132,14 +174,14 @@ const incomeCategories = [
 ];
 const quickExampleSets = {
   expense: [
-    { label: "早餐 12", value: "早餐 12" },
-    { label: "打车 25", value: "打车 25" },
-    { label: "日用品 156", value: "超市日用品 156" },
+    { label: "早餐 12", value: "早餐 12", category: "餐饮" },
+    { label: "打车 25", value: "打车 25", category: "交通" },
+    { label: "日用品 156", value: "超市日用品 156", category: "购物" },
   ],
   income: [
-    { label: "工资 5000", value: "工资 5000" },
-    { label: "奖金 800", value: "奖金 800" },
-    { label: "红包 200", value: "红包 200" },
+    { label: "工资 5000", value: "工资 5000", category: "工资" },
+    { label: "奖金 800", value: "奖金 800", category: "奖金" },
+    { label: "红包 200", value: "红包 200", category: "红包" },
   ],
 };
 
@@ -158,6 +200,7 @@ let pendingWithdrawId = null;
 let activeTab = "明细";
 let selectedFlow = "expense";
 let selectedEntryFlow = "expense";
+let selectedEntryCategory = "";
 let selectedPeriod = "week";
 let selectedCurrency = readSelectedCurrency();
 
@@ -863,11 +906,81 @@ function syncEntryDateContext() {
   expenseInput.placeholder = "海底捞 422";
 }
 
+function getFallbackCategory(flow = selectedEntryFlow) {
+  return {
+    name: "其他",
+    icon: flow === "income" ? "💰" : "📦",
+    keywords: [],
+  };
+}
+
+function getEntryCategoryOptions(flow = selectedEntryFlow) {
+  const categories = flow === "income" ? incomeCategories : expenseCategories;
+
+  if (categories.some((category) => category.name === "其他")) {
+    return categories;
+  }
+
+  return [...categories, getFallbackCategory(flow)];
+}
+
+function getSelectedEntryCategory() {
+  return getEntryCategoryOptions().find((category) => category.name === selectedEntryCategory) || null;
+}
+
+function formatCategoryLabel(category) {
+  return `${category.icon} ${category.name}`;
+}
+
+function renderEntryCategoryCards() {
+  const fragment = document.createDocumentFragment();
+  const categories = getEntryCategoryOptions();
+
+  categories.forEach((category) => {
+    const card = document.createElement("button");
+    const isActive = category.name === selectedEntryCategory;
+
+    card.className = "entry-category-card";
+    card.classList.toggle("is-active", isActive);
+    card.type = "button";
+    card.dataset.category = category.name;
+    card.setAttribute("role", "option");
+    card.setAttribute("aria-selected", String(isActive));
+
+    const visual = document.createElement("span");
+    visual.className = "entry-category-visual";
+    visual.textContent = category.icon;
+    visual.setAttribute("aria-hidden", "true");
+
+    const label = document.createElement("span");
+    label.className = "entry-category-name";
+    label.textContent = category.name;
+
+    card.append(visual, label);
+    fragment.append(card);
+  });
+
+  entryCategoryGrid.replaceChildren(fragment);
+}
+
+function setEntryCategory(categoryName) {
+  const category = getEntryCategoryOptions().find((item) => item.name === categoryName);
+
+  if (!category) {
+    return;
+  }
+
+  selectedEntryCategory = category.name;
+  formError.textContent = "";
+  renderEntryCategoryCards();
+}
+
 function renderEntryFlowOptions() {
   entryFlowOptions.forEach((option) => {
     option.classList.toggle("is-active", option.dataset.entryFlow === selectedEntryFlow);
   });
   appScreen.dataset.entryFlow = selectedEntryFlow;
+  renderEntryCategoryCards();
   renderQuickExamples();
   syncEntryDateContext();
 }
@@ -879,6 +992,7 @@ function renderQuickExamples() {
     const example = examples[index];
     button.textContent = example.label;
     button.dataset.example = example.value;
+    button.dataset.category = example.category;
   });
 }
 
@@ -888,6 +1002,7 @@ function setEntryFlow(flow) {
   }
 
   selectedEntryFlow = flow;
+  selectedEntryCategory = "";
   resetEntry();
   renderEntryFlowOptions();
 }
@@ -993,6 +1108,7 @@ function selectDate(dateKey, shouldToast = true) {
 
 function openSheet() {
   selectedEntryFlow = "expense";
+  selectedEntryCategory = "";
   renderEntryFlowOptions();
   syncEntryDateContext();
   sheet.hidden = false;
@@ -1012,17 +1128,54 @@ function closeSheet() {
 
 function resetEntry() {
   parsedExpense = null;
+  selectedEntryCategory = "";
   entryForm.hidden = false;
   confirmCard.hidden = true;
   formError.textContent = "";
   expenseInput.value = "";
+  renderEntryCategoryCards();
+}
+
+function normalizeRecordText(value) {
+  return value.toLowerCase().replace(/\s+/g, "");
+}
+
+function getCategoryIcon(categoryLabel) {
+  const categoryName = normalizeCategoryName(categoryLabel);
+  const category = [
+    ...expenseCategories,
+    ...incomeCategories,
+    getFallbackCategory("expense"),
+    getFallbackCategory("income"),
+  ].find((item) => item.name === categoryName);
+
+  return category?.icon || "•";
 }
 
 function classifyRecord(note, flow = selectedEntryFlow) {
   const categories = flow === "income" ? incomeCategories : expenseCategories;
-  const category =
-    categories.find((item) => item.keywords.some((keyword) => note.includes(keyword))) ||
-    { name: "其他", icon: flow === "income" ? "💰" : "📦" };
+  const normalizedNote = normalizeRecordText(note);
+  let category = null;
+  let bestScore = 0;
+
+  categories.forEach((item) => {
+    const score = item.keywords.reduce((total, keyword) => {
+      const normalizedKeyword = normalizeRecordText(keyword);
+
+      if (!normalizedKeyword || !normalizedNote.includes(normalizedKeyword)) {
+        return total;
+      }
+
+      return total + Math.max(normalizedKeyword.length, 1);
+    }, 0);
+
+    if (score > bestScore) {
+      bestScore = score;
+      category = item;
+    }
+  });
+
+  category ||= { name: "其他", icon: flow === "income" ? "💰" : "📦" };
 
   return `${category.icon} ${category.name}`;
 }
@@ -1046,11 +1199,12 @@ function parseExpense(rawValue) {
   }
 
   const selectedDate = getSelectedDate();
+  const selectedCategory = getSelectedEntryCategory();
 
   return {
     note,
     amount,
-    category: classifyRecord(note),
+    category: selectedCategory ? formatCategoryLabel(selectedCategory) : classifyRecord(note),
     flow: selectedEntryFlow,
     dateKey: selectedDateKey,
     dateLabel: formatDateLabel(selectedDate),
@@ -1115,6 +1269,11 @@ function renderLedger() {
       openWithdrawDialog(record.id);
     });
 
+    const visual = document.createElement("span");
+    visual.className = "ledger-visual";
+    visual.textContent = getCategoryIcon(record.category);
+    visual.setAttribute("aria-hidden", "true");
+
     const main = document.createElement("div");
     main.className = "ledger-main";
 
@@ -1145,7 +1304,7 @@ function renderLedger() {
 
     meta.append(category, time);
     main.append(note, meta);
-    item.append(main, amount);
+    item.append(visual, main, amount);
     fragment.append(item);
   });
 
@@ -1444,9 +1603,21 @@ entryFlowOptions.forEach((option) => {
   });
 });
 
+entryCategoryGrid.addEventListener("click", (event) => {
+  const card = event.target.closest(".entry-category-card");
+
+  if (!card) {
+    return;
+  }
+
+  setEntryCategory(card.dataset.category);
+  expenseInput.focus();
+});
+
 quickExamples.forEach((button) => {
   button.addEventListener("click", () => {
     expenseInput.value = button.dataset.example;
+    setEntryCategory(button.dataset.category);
     expenseInput.focus();
   });
 });
@@ -1454,6 +1625,12 @@ quickExamples.forEach((button) => {
 entryForm.addEventListener("submit", (event) => {
   event.preventDefault();
   formError.textContent = "";
+
+  if (!selectedEntryCategory) {
+    formError.textContent = "请先选择一个类别";
+    entryCategoryGrid.focus();
+    return;
+  }
 
   const expense = parseExpense(expenseInput.value);
   if (!expense) {

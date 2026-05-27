@@ -472,7 +472,8 @@ input:focus-visible {
 .ledger-item {
   width: 100%;
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: 42px 1fr auto;
+  align-items: center;
   gap: 10px 14px;
   padding: 14px 15px;
   border: 0;
@@ -496,6 +497,17 @@ input:focus-visible {
 
 .ledger-item:active {
   transform: scale(0.985);
+}
+
+.ledger-visual {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 16px;
+  background: rgba(88, 205, 208, 0.18);
+  font-size: 21px;
+  line-height: 1;
 }
 
 .ledger-item[data-flow="income"] .ledger-category {
@@ -557,6 +569,7 @@ input:focus-visible {
 }
 
 .ledger-category {
+  flex: 0 0 auto;
   max-width: 98px;
   overflow: hidden;
   padding: 4px 8px;
@@ -1523,12 +1536,19 @@ input:focus-visible {
   right: 14px;
   bottom: 14px;
   z-index: 9;
+  max-height: calc(100% - 78px);
+  overflow-y: auto;
   padding: 10px 18px 20px;
   border-radius: 30px 30px 56px 56px;
   background: var(--sheet-bg);
   box-shadow: 0 -18px 52px rgba(0, 0, 0, 0.45);
   transform: translateY(115%);
   transition: transform 260ms ease;
+  scrollbar-width: none;
+}
+
+.entry-sheet::-webkit-scrollbar {
+  display: none;
 }
 
 .app-screen[data-sheet-open="true"] .sheet-backdrop {
@@ -1607,6 +1627,86 @@ input:focus-visible {
   background: #111111;
   color: #ffffff;
   box-shadow: 0 7px 18px rgba(0, 0, 0, 0.14);
+}
+
+.entry-category-section {
+  display: grid;
+  gap: 9px;
+}
+
+.entry-category-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  color: #343434;
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.entry-category-heading small {
+  color: rgba(17, 17, 17, 0.52);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.entry-category-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  outline: 0;
+}
+
+.entry-category-card {
+  min-width: 0;
+  min-height: 64px;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 5px;
+  padding: 8px 5px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.78);
+  color: #111111;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.07);
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    background-color 160ms ease;
+}
+
+.entry-category-card:hover {
+  transform: translateY(-1px);
+}
+
+.entry-category-card.is-active {
+  background: #111111;
+  color: #ffffff;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.16);
+}
+
+.entry-category-visual {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 13px;
+  background: rgba(88, 205, 208, 0.16);
+  font-size: 18px;
+  line-height: 1;
+}
+
+.entry-category-card.is-active .entry-category-visual {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.entry-category-name {
+  font-size: 13px;
+  font-weight: 720;
+  line-height: 1;
+  text-align: center;
+  white-space: nowrap;
 }
 
 .input-label {
@@ -1916,6 +2016,11 @@ input:focus-visible {
   color: #295362;
 }
 
+.ledger-visual,
+.entry-category-visual {
+  background: rgba(138, 188, 200, 0.16);
+}
+
 .ledger-item[data-flow="income"] .ledger-category {
   background: rgba(91, 159, 149, 0.16);
   color: #256a63;
@@ -1931,6 +2036,20 @@ input:focus-visible {
   background: rgba(27, 44, 57, 0.08);
 }
 
+.entry-category-heading {
+  color: var(--ink);
+}
+
+.entry-category-heading small {
+  color: var(--ink-soft);
+}
+
+.entry-category-card {
+  background: rgba(255, 255, 255, 0.78);
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--stroke);
+}
+
 .flow-option,
 .entry-flow-option {
   color: var(--ink-soft);
@@ -1938,6 +2057,7 @@ input:focus-visible {
 
 .flow-option.is-active,
 .entry-flow-option.is-active,
+.entry-category-card.is-active,
 .period-option.is-active,
 .parse-button,
 .save-result,
@@ -1945,6 +2065,10 @@ input:focus-visible {
   background: #17232d;
   color: #f5fbfc;
   box-shadow: 0 10px 24px rgba(9, 20, 29, 0.18);
+}
+
+.entry-category-card.is-active .entry-category-visual {
+  background: rgba(255, 255, 255, 0.16);
 }
 
 .report-button,
