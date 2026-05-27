@@ -386,6 +386,18 @@ input:focus-visible {
   font-weight: 720;
 }
 
+.month-detail-button {
+  flex: 0 0 auto;
+  height: 27px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.94);
+  color: #182732;
+  font-size: 12px;
+  font-weight: 780;
+  box-shadow: 0 8px 18px rgba(18, 37, 49, 0.1);
+}
+
 .daily-total-panel {
   position: absolute;
   top: 350px;
@@ -1364,6 +1376,220 @@ input:focus-visible {
   color: #ffffff;
 }
 
+.month-detail-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  background: rgba(3, 9, 14, 0.46);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 180ms ease;
+}
+
+.month-detail-sheet {
+  position: absolute;
+  left: 20px;
+  right: 20px;
+  top: 88px;
+  bottom: 116px;
+  z-index: 11;
+  display: flex;
+  flex-direction: column;
+  padding: 20px 16px 18px;
+  border-radius: 30px;
+  background: rgba(248, 252, 253, 0.98);
+  box-shadow:
+    0 28px 58px rgba(4, 12, 18, 0.42),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.86);
+  opacity: 0;
+  transform: translateY(18px) scale(0.98);
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease;
+}
+
+.app-screen[data-month-detail-open="true"] .month-detail-backdrop {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.app-screen[data-month-detail-open="true"] .month-detail-sheet {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.month-detail-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.month-detail-kicker {
+  margin: 0 0 5px;
+  color: rgba(35, 52, 65, 0.56);
+  font-size: 12px;
+  line-height: 1;
+  font-weight: 760;
+}
+
+.month-detail-header h2 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 22px;
+  line-height: 1.16;
+  font-weight: 760;
+}
+
+.month-detail-close {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(25, 42, 55, 0.08);
+  color: var(--ink);
+  font-size: 22px;
+  line-height: 1;
+}
+
+.month-detail-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 16px 0 14px;
+}
+
+.month-detail-summary div {
+  min-width: 0;
+  padding: 10px 8px;
+  border-radius: 16px;
+  background: rgba(138, 188, 200, 0.13);
+  text-align: center;
+}
+
+.month-detail-summary dt {
+  color: rgba(35, 52, 65, 0.58);
+  font-size: 11px;
+  line-height: 1;
+  font-weight: 720;
+}
+
+.month-detail-summary dd {
+  overflow: hidden;
+  margin: 7px 0 0;
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1;
+  font-weight: 780;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.month-detail-income,
+.month-detail-balance {
+  color: var(--positive);
+}
+
+.month-detail-balance.is-negative,
+.month-detail-expense {
+  color: #8f574a;
+}
+
+.month-weekdays,
+.month-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.month-weekdays {
+  gap: 5px;
+  margin-bottom: 7px;
+  color: rgba(35, 52, 65, 0.48);
+  font-size: 11px;
+  font-weight: 760;
+  text-align: center;
+}
+
+.month-detail-grid {
+  flex: 1;
+  gap: 5px;
+  min-height: 0;
+}
+
+.month-day-placeholder,
+.month-day {
+  min-width: 0;
+  min-height: 0;
+}
+
+.month-day {
+  height: 58px;
+  display: grid;
+  align-content: start;
+  justify-items: center;
+  gap: 4px;
+  padding: 6px 2px 4px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.64);
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1px rgba(35, 52, 65, 0.07);
+}
+
+.month-day.has-records {
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.month-day.is-today {
+  box-shadow:
+    inset 0 0 0 1px rgba(117, 170, 184, 0.5),
+    0 8px 18px rgba(75, 113, 126, 0.1);
+}
+
+.month-day.is-selected {
+  background: linear-gradient(180deg, #dcecf0 0%, #c5dde4 100%);
+}
+
+.month-day-number {
+  font-size: 12px;
+  line-height: 1;
+  font-weight: 800;
+}
+
+.month-day-amounts {
+  width: 100%;
+  display: grid;
+  gap: 2px;
+  min-height: 28px;
+  justify-items: center;
+  overflow: hidden;
+}
+
+.month-day-income,
+.month-day-expense,
+.month-day-empty {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 9.5px;
+  line-height: 1;
+  font-weight: 760;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.month-day-income {
+  color: var(--positive);
+}
+
+.month-day-expense {
+  color: #8f574a;
+}
+
+.month-day-empty {
+  color: rgba(35, 52, 65, 0.18);
+}
+
 .report-backdrop {
   position: absolute;
   inset: 0;
@@ -1396,6 +1622,7 @@ input:focus-visible {
 
 .report-dialog[hidden],
 .withdraw-dialog[hidden],
+.month-detail-sheet[hidden],
 .entry-sheet[hidden] {
   display: none;
 }
@@ -2241,12 +2468,14 @@ input:focus-visible {
 
 .withdraw-backdrop,
 .report-backdrop,
+.month-detail-backdrop,
 .sheet-backdrop {
   background: rgba(3, 9, 14, 0.58);
 }
 
 .withdraw-dialog,
 .report-dialog,
+.month-detail-sheet,
 .entry-sheet {
   background: var(--sheet-bg);
   box-shadow:
@@ -2398,6 +2627,17 @@ input:focus-visible {
     top: calc(21% + 148px);
     left: 7.5%;
     right: 7.5%;
+  }
+
+  .month-detail-sheet {
+    top: 7.5%;
+    left: 5.5%;
+    right: 5.5%;
+    bottom: 11%;
+  }
+
+  .month-day {
+    height: clamp(52px, 7.2vh, 58px);
   }
 
   .ledger-space {

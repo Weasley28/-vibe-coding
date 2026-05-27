@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>智能记账 App - 首页原型</title>
-    <link rel="stylesheet" href="./styles.css?v=currency-labels-numeric-amounts" />
+    <link rel="stylesheet" href="./styles.css?v=month-calendar-detail" />
   </head>
   <body>
     <main class="preview-stage">
@@ -23,6 +23,7 @@
             data-sheet-open="false"
             data-withdraw-open="false"
             data-report-open="false"
+            data-month-detail-open="false"
           >
             <header class="calendar-zone" aria-label="日期选择">
               <button
@@ -44,6 +45,9 @@
               <div class="selected-date-chip" aria-live="polite">
                 <span class="selected-date-text">今天</span>
                 <strong class="selected-date-mode">可记账</strong>
+                <button class="month-detail-button" type="button" aria-label="查看本月日历明细">
+                  月历
+                </button>
               </div>
               <div class="daily-total-panel" aria-label="当天收支汇总">
                 <dl class="daily-total-list">
@@ -359,6 +363,50 @@
               </div>
             </section>
 
+            <div class="month-detail-backdrop" aria-hidden="true"></div>
+
+            <section
+              class="month-detail-sheet"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="month-detail-title"
+              hidden
+            >
+              <div class="month-detail-header">
+                <div>
+                  <p class="month-detail-kicker">日历明细</p>
+                  <h2 id="month-detail-title">本月收支</h2>
+                </div>
+                <button class="month-detail-close" type="button" aria-label="关闭日历明细">×</button>
+              </div>
+
+              <dl class="month-detail-summary" aria-label="本月收支汇总">
+                <div>
+                  <dt>收入</dt>
+                  <dd class="month-detail-income">0</dd>
+                </div>
+                <div>
+                  <dt>支出</dt>
+                  <dd class="month-detail-expense">0</dd>
+                </div>
+                <div>
+                  <dt>结余</dt>
+                  <dd class="month-detail-balance">0</dd>
+                </div>
+              </dl>
+
+              <div class="month-weekdays" aria-hidden="true">
+                <span>日</span>
+                <span>一</span>
+                <span>二</span>
+                <span>三</span>
+                <span>四</span>
+                <span>五</span>
+                <span>六</span>
+              </div>
+              <div class="month-detail-grid" role="grid" aria-label="本月每天收支"></div>
+            </section>
+
             <div class="report-backdrop" aria-hidden="true"></div>
 
             <section
@@ -382,6 +430,6 @@
       </section>
     </main>
 
-    <script src="./app.js?v=currency-labels-numeric-amounts"></script>
+    <script src="./app.js?v=month-calendar-detail"></script>
   </body>
 </html>
