@@ -48,6 +48,15 @@ const reportDialog = document.querySelector(".report-dialog");
 const reportTitle = document.querySelector("#report-title");
 const reportBody = document.querySelector(".report-body");
 const reportClose = document.querySelector(".report-close");
+const monthDetailButton = document.querySelector(".month-detail-button");
+const monthDetailBackdrop = document.querySelector(".month-detail-backdrop");
+const monthDetailSheet = document.querySelector(".month-detail-sheet");
+const monthDetailTitle = document.querySelector("#month-detail-title");
+const monthDetailClose = document.querySelector(".month-detail-close");
+const monthDetailGrid = document.querySelector(".month-detail-grid");
+const monthDetailIncome = document.querySelector(".month-detail-income");
+const monthDetailExpense = document.querySelector(".month-detail-expense");
+const monthDetailBalance = document.querySelector(".month-detail-balance");
 const sheet = document.querySelector(".entry-sheet");
 const sheetBackdrop = document.querySelector(".sheet-backdrop");
 const sheetClose = document.querySelector(".sheet-close");
@@ -308,6 +317,30 @@ function formatPlainMoney(amount) {
   });
 }
 
+function formatCompactMoney(amount) {
+  const absoluteAmount = Math.abs(amount);
+
+  if (absoluteAmount >= 10000) {
+    return `${(absoluteAmount / 10000).toLocaleString("zh-CN", {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: absoluteAmount >= 100000 ? 0 : 1,
+    })}万`;
+  }
+
+  if (absoluteAmount >= 1000) {
+    return `${(absoluteAmount / 1000).toLocaleString("zh-CN", {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 1,
+    })}k`;
+  }
+
+  return absoluteAmount.toLocaleString("zh-CN", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 1,
+    useGrouping: false,
+  });
+}
+
 function getCurrencyProfile() {
   return currencyProfiles[selectedCurrency] || currencyProfiles.CNY;
 }
@@ -552,10 +585,47 @@ function getMonthRecords() {
   });
 }
 
+function getRecordsInMonth(date) {
+  return readRecords().filter((record) => {
+    return isSameMonth(getRecordDate(record), date.getFullYear(), date.getMonth());
+  });
+}
+
 function getFlowTotal(records, flow) {
   return records
     .filter((record) => getRecordFlow(record) === flow)
     .reduce((sum, record) => sum + Number(record.amount || 0), 0);
+}
+
+function buildMonthlyCalendar(date = getSelectedDate()) {
+  const year = date.getFullYear();
+  const month = date.getMonth();
+  const monthStart = new Date(year, month, 1);
+  const monthEnd = new Date(year, month + 1, 0);
+  const records = getRecordsInMonth(date);
+  const dailyTotals = new Map();
+
+  records.forEach((record) => {
+    const dateKey = toDateKey(getRecordDate(record));
+    const current = dailyTotals.get(dateKey) || { income: 0, expense: 0, count: 0 };
+    const amount = Number(record.amount || 0);
+
+    if (getRecordFlow(record) === "income") {
+      current.income += amount;
+    } else {
+      current.expense += amount;
+    }
+
+    current.count += 1;
+    dailyTotals.set(dateKey, current);
+  });
+
+  return {
+    dailyTotals,
+    monthEnd,
+    monthStart,
+    records,
+  };
 }
 
 function getSelectedDateRecords() {
@@ -884,6 +954,100 @@ function renderReport() {
   `;
 }
 
+function renderMonthDetail() {
+  const selectedDate = getSelectedDate();
+  const { dailyTotals, monthEnd, monthStart, records } = buildMonthlyCalendar(selectedDate);
+  const incomeTotal = getFlowTotal(records, "income");
+  const expenseTotal = getFlowTotal(records, "expense");
+  const balanceTotal = incomeTotal - expenseTotal;
+  const fragment = document.createDocumentFragment();
+
+  monthDetailTitle.textContent = `${selectedDate.getFullYear()}年${selectedDate.getMonth() + 1}月明细`;
+  monthDetailIncome.textContent = `+${formatMoney(incomeTotal)}`;
+  monthDetailExpense.textContent = formatMoney(expenseTotal);
+  monthDetailBalance.textContent = formatBalanceMoney(balanceTotal);
+  monthDetailBalance.classList.toggle("is-negative", balanceTotal < 0);
+
+  for (let index = 0; index < monthStart.getDay(); index += 1) {
+    const placeholder = document.createElement("span");
+    placeholder.className = "month-day-placeholder";
+    placeholder.setAttribute("aria-hidden", "true");
+    fragment.append(placeholder);
+  }
+
+  for (let day = 1; day <= monthEnd.getDate(); day += 1) {
+    const date = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), day);
+    const dateKey = toDateKey(date);
+    const totals = dailyTotals.get(dateKey) || { income: 0, expense: 0, count: 0 };
+    const dayButton = document.createElement("button");
+    const hasIncome = totals.income > 0;
+    const hasExpense = totals.expense > 0;
+    const hasRecords = totals.count > 0;
+
+    dayButton.className = "month-day";
+    dayButton.type = "button";
+    dayButton.dataset.dateKey = dateKey;
+    dayButton.classList.toggle("is-selected", dateKey === selectedDateKey);
+    dayButton.classList.toggle("is-today", dateKey === toDateKey(today));
+    dayButton.classList.toggle("has-records", hasRecords);
+    dayButton.setAttribute(
+      "aria-label",
+      `${formatMonthDay(date)} 收入${formatMoney(totals.income)} 支出${formatMoney(totals.expense)}`,
+    );
+
+    const number = document.createElement("span");
+    number.className = "month-day-number";
+    number.textContent = String(day);
+
+    const amounts = document.createElement("span");
+    amounts.className = "month-day-amounts";
+
+    if (hasIncome) {
+      const income = document.createElement("span");
+      income.className = "month-day-income";
+      income.textContent = `+${formatCompactMoney(totals.income)}`;
+      amounts.append(income);
+    }
+
+    if (hasExpense) {
+      const expense = document.createElement("span");
+      expense.className = "month-day-expense";
+      expense.textContent = `-${formatCompactMoney(totals.expense)}`;
+      amounts.append(expense);
+    }
+
+    if (!hasRecords) {
+      const empty = document.createElement("span");
+      empty.className = "month-day-empty";
+      empty.textContent = "·";
+      amounts.append(empty);
+    }
+
+    dayButton.append(number, amounts);
+    fragment.append(dayButton);
+  }
+
+  monthDetailGrid.replaceChildren(fragment);
+}
+
+function openMonthDetail() {
+  renderMonthDetail();
+  monthDetailSheet.hidden = false;
+
+  requestAnimationFrame(() => {
+    appScreen.dataset.monthDetailOpen = "true";
+    monthDetailClose.focus();
+  });
+}
+
+function closeMonthDetail() {
+  appScreen.dataset.monthDetailOpen = "false";
+
+  window.setTimeout(() => {
+    monthDetailSheet.hidden = true;
+  }, 180);
+}
+
 function getSelectedDate() {
   return fromDateKey(selectedDateKey);
 }
@@ -1146,6 +1310,10 @@ function selectDate(dateKey, shouldToast = true) {
   renderLedger();
   scrollSelectedDateIntoView();
 
+  if (appScreen.dataset.monthDetailOpen === "true") {
+    renderMonthDetail();
+  }
+
   if (shouldToast) {
     showToast(formatDateLabel(getSelectedDate()));
   }
@@ -1401,6 +1569,10 @@ function setActiveTab(tabName) {
   if (tabName === "资产") {
     renderAssetsView();
   }
+
+  if (tabName !== "明细" && appScreen.dataset.monthDetailOpen === "true") {
+    closeMonthDetail();
+  }
 }
 
 function openReportDialog() {
@@ -1437,6 +1609,9 @@ function withdrawRecord(recordId) {
   if (activeTab === "资产") {
     renderAssetsView();
   }
+  if (appScreen.dataset.monthDetailOpen === "true") {
+    renderMonthDetail();
+  }
   showToast(`已撤回 ${formatRecordMoney(Number(targetRecord.amount) || 0, getRecordFlow(targetRecord))}`);
 }
 
@@ -1460,6 +1635,9 @@ function saveExpense() {
   }
   if (activeTab === "资产") {
     renderAssetsView();
+  }
+  if (appScreen.dataset.monthDetailOpen === "true") {
+    renderMonthDetail();
   }
   closeSheet();
   const toastPrefix = savedExpense.isBackfilled ? "已补记" : "已记账";
@@ -1610,6 +1788,22 @@ withdrawConfirm.addEventListener("click", () => {
 reportButton.addEventListener("click", openReportDialog);
 reportBackdrop.addEventListener("click", closeReportDialog);
 reportClose.addEventListener("click", closeReportDialog);
+monthDetailButton.addEventListener("click", (event) => {
+  event.stopPropagation();
+  openMonthDetail();
+});
+monthDetailBackdrop.addEventListener("click", closeMonthDetail);
+monthDetailClose.addEventListener("click", closeMonthDetail);
+monthDetailGrid.addEventListener("click", (event) => {
+  const day = event.target.closest(".month-day");
+
+  if (!day) {
+    return;
+  }
+
+  selectDate(day.dataset.dateKey);
+  closeMonthDetail();
+});
 currencySwitch.addEventListener("click", (event) => {
   event.stopPropagation();
   toggleCurrencyPopover();
@@ -1698,6 +1892,11 @@ saveResult.addEventListener("click", saveExpense);
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && appScreen.dataset.reportOpen === "true") {
     closeReportDialog();
+    return;
+  }
+
+  if (event.key === "Escape" && appScreen.dataset.monthDetailOpen === "true") {
+    closeMonthDetail();
     return;
   }
 
