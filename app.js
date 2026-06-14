@@ -81,6 +81,16 @@ const withdrawDialog = document.querySelector(".withdraw-dialog");
 const withdrawSummary = document.querySelector(".withdraw-summary");
 const withdrawCancel = document.querySelector(".withdraw-cancel");
 const withdrawConfirm = document.querySelector(".withdraw-confirm");
+const hasMonthDetail =
+  Boolean(monthDetailButton) &&
+  Boolean(monthDetailBackdrop) &&
+  Boolean(monthDetailSheet) &&
+  Boolean(monthDetailTitle) &&
+  Boolean(monthDetailClose) &&
+  Boolean(monthDetailGrid) &&
+  Boolean(monthDetailIncome) &&
+  Boolean(monthDetailExpense) &&
+  Boolean(monthDetailBalance);
 
 const storageKey = "bookkeeping-records";
 const currencyStorageKey = "bookkeeping-currency";
@@ -955,6 +965,10 @@ function renderReport() {
 }
 
 function renderMonthDetail() {
+  if (!hasMonthDetail) {
+    return;
+  }
+
   const selectedDate = getSelectedDate();
   const { dailyTotals, monthEnd, monthStart, records } = buildMonthlyCalendar(selectedDate);
   const incomeTotal = getFlowTotal(records, "income");
@@ -1031,6 +1045,10 @@ function renderMonthDetail() {
 }
 
 function openMonthDetail() {
+  if (!hasMonthDetail) {
+    return;
+  }
+
   renderMonthDetail();
   monthDetailSheet.hidden = false;
 
@@ -1041,6 +1059,10 @@ function openMonthDetail() {
 }
 
 function closeMonthDetail() {
+  if (!hasMonthDetail) {
+    return;
+  }
+
   appScreen.dataset.monthDetailOpen = "false";
 
   window.setTimeout(() => {
@@ -1788,22 +1810,26 @@ withdrawConfirm.addEventListener("click", () => {
 reportButton.addEventListener("click", openReportDialog);
 reportBackdrop.addEventListener("click", closeReportDialog);
 reportClose.addEventListener("click", closeReportDialog);
-monthDetailButton.addEventListener("click", (event) => {
-  event.stopPropagation();
-  openMonthDetail();
-});
-monthDetailBackdrop.addEventListener("click", closeMonthDetail);
-monthDetailClose.addEventListener("click", closeMonthDetail);
-monthDetailGrid.addEventListener("click", (event) => {
-  const day = event.target.closest(".month-day");
 
-  if (!day) {
-    return;
-  }
+if (hasMonthDetail) {
+  monthDetailButton.addEventListener("click", (event) => {
+    event.stopPropagation();
+    openMonthDetail();
+  });
+  monthDetailBackdrop.addEventListener("click", closeMonthDetail);
+  monthDetailClose.addEventListener("click", closeMonthDetail);
+  monthDetailGrid.addEventListener("click", (event) => {
+    const day = event.target.closest(".month-day");
 
-  selectDate(day.dataset.dateKey);
-  closeMonthDetail();
-});
+    if (!day) {
+      return;
+    }
+
+    selectDate(day.dataset.dateKey);
+    closeMonthDetail();
+  });
+}
+
 currencySwitch.addEventListener("click", (event) => {
   event.stopPropagation();
   toggleCurrencyPopover();
@@ -1865,12 +1891,6 @@ entryForm.addEventListener("submit", (event) => {
   event.preventDefault();
   formError.textContent = "";
 
-  if (!selectedEntryCategory) {
-    formError.textContent = "请先选择一个类别";
-    entryCategoryGrid.focus();
-    return;
-  }
-
   const expense = parseExpense(expenseInput.value);
   if (!expense) {
     formError.textContent = "请按“事项 + 金额”输入，例如：海底捞 422";
@@ -1878,7 +1898,8 @@ entryForm.addEventListener("submit", (event) => {
     return;
   }
 
-  renderConfirm(expense);
+  parsedExpense = expense;
+  saveExpense();
 });
 
 editResult.addEventListener("click", () => {

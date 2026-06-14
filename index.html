@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>智能记账 App - 首页原型</title>
-    <link rel="stylesheet" href="./styles.css?v=month-calendar-detail" />
+    <link rel="stylesheet" href="./styles.css?v=month-calendar-detail-safe" />
   </head>
   <body>
     <main class="preview-stage">
@@ -292,8 +292,8 @@
 
                 <div class="entry-category-section">
                   <div class="entry-category-heading">
-                    <span>先选类别</span>
-                    <small>再输入具体内容和金额</small>
+                    <span>选择类别</span>
+                    <small>不选也会自动识别</small>
                   </div>
                   <div class="entry-category-grid" role="listbox" aria-label="记账类别" tabindex="-1"></div>
                 </div>
@@ -310,7 +310,7 @@
                     enterkeyhint="done"
                     placeholder="海底捞 422"
                   />
-                  <button class="parse-button" type="submit">识别</button>
+                  <button class="parse-button" type="submit">确定</button>
                 </div>
                 <p class="form-error" role="alert"></p>
 
@@ -430,6 +430,6 @@
       </section>
     </main>
 
-    <script src="./app.js?v=month-calendar-detail"></script>
+    <script src="./app.js?v=month-calendar-detail-safe"></script>
   </body>
 </html>
