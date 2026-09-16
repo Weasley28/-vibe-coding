@@ -144,16 +144,16 @@ const periodLabels = {
   year: "本年",
 };
 const currencyProfiles = {
-  CNY: { name: "人民币", symbol: "¥", rate: 1, decimals: 2 },
-  USD: { name: "美元", symbol: "$", rate: 0.14, decimals: 2 },
-  EUR: { name: "欧元", symbol: "€", rate: 0.13, decimals: 2 },
-  JPY: { name: "日元", symbol: "¥", rate: 22, decimals: 0 },
-  HKD: { name: "港币", symbol: "HK$", rate: 1.09, decimals: 2 },
-  GBP: { name: "英镑", symbol: "£", rate: 0.11, decimals: 2 },
-  AUD: { name: "澳元", symbol: "A$", rate: 0.21, decimals: 2 },
-  CAD: { name: "加元", symbol: "C$", rate: 0.19, decimals: 2 },
-  SGD: { name: "新加坡元", symbol: "S$", rate: 0.18, decimals: 2 },
-  KRW: { name: "韩元", symbol: "₩", rate: 190, decimals: 0 },
+  CNY: { name: "人民币", symbol: "¥", decimals: 2 },
+  USD: { name: "美元", symbol: "$", decimals: 2 },
+  EUR: { name: "欧元", symbol: "€", decimals: 2 },
+  JPY: { name: "日元", symbol: "¥", decimals: 0 },
+  HKD: { name: "港币", symbol: "HK$", decimals: 2 },
+  GBP: { name: "英镑", symbol: "£", decimals: 2 },
+  AUD: { name: "澳元", symbol: "A$", decimals: 2 },
+  CAD: { name: "加元", symbol: "C$", decimals: 2 },
+  SGD: { name: "新加坡元", symbol: "S$", decimals: 2 },
+  KRW: { name: "韩元", symbol: "₩", decimals: 0 },
 };
 const projectColors = ["#6f9faf", "#7f91b5", "#6d9f96", "#a1849a", "#9a8f68"];
 const categoryColors = {
@@ -369,30 +369,6 @@ function formatPlainMoney(amount) {
   });
 }
 
-function formatCompactMoney(amount) {
-  const absoluteAmount = Math.abs(amount);
-
-  if (absoluteAmount >= 10000) {
-    return `${(absoluteAmount / 10000).toLocaleString("zh-CN", {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: absoluteAmount >= 100000 ? 0 : 1,
-    })}万`;
-  }
-
-  if (absoluteAmount >= 1000) {
-    return `${(absoluteAmount / 1000).toLocaleString("zh-CN", {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 1,
-    })}k`;
-  }
-
-  return absoluteAmount.toLocaleString("zh-CN", {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 1,
-    useGrouping: false,
-  });
-}
-
 function getCurrencyProfile() {
   return currencyProfiles[selectedCurrency] || currencyProfiles.CNY;
 }
@@ -404,11 +380,11 @@ function formatCurrencyLabel(currency = selectedCurrency) {
 }
 
 function fromBaseCurrency(amount) {
-  return amount * getCurrencyProfile().rate;
+  return Number(amount) || 0;
 }
 
 function toBaseCurrency(amount) {
-  return amount / getCurrencyProfile().rate;
+  return Number(amount) || 0;
 }
 
 function formatAssetMoney(amount) {
@@ -566,10 +542,14 @@ function readRecords() {
     const recordDate = record.dateKey ? fromDateKey(record.dateKey) : safeDate(record.createdAt);
     const createdAtDate = safeDate(record.createdAt);
     const recordTime = record.recordTime || formatClock(createdAtDate);
+    const originalInputAmount = Number(record.inputAmount);
+    const hasOriginalCurrencyInput =
+      Boolean(record.inputCurrency) && Number.isFinite(originalInputAmount) && originalInputAmount > 0;
 
     return {
       ...record,
       id: record.id || `${toDateKey(recordDate)}-${record.note}-${record.amount}-${recordTime}`,
+      amount: hasOriginalCurrencyInput ? originalInputAmount : Number(record.amount) || 0,
       flow: getRecordFlow(record),
       dateKey: record.dateKey || toDateKey(recordDate),
       dateLabel: record.dateLabel || formatDateLabel(recordDate),
@@ -1486,14 +1466,14 @@ function renderMonthDetail() {
     if (hasIncome) {
       const income = document.createElement("span");
       income.className = "month-day-income";
-      income.textContent = `+${formatCompactMoney(totals.income)}`;
+      income.textContent = formatDetailMoney(totals.income, "income");
       amounts.append(income);
     }
 
     if (hasExpense) {
       const expense = document.createElement("span");
       expense.className = "month-day-expense";
-      expense.textContent = `-${formatCompactMoney(totals.expense)}`;
+      expense.textContent = `-${formatDetailMoney(totals.expense)}`;
       amounts.append(expense);
     }
 
