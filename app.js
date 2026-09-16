@@ -85,6 +85,7 @@ const editResult = document.querySelector(".edit-result");
 const saveResult = document.querySelector(".save-result");
 const withdrawBackdrop = document.querySelector(".withdraw-backdrop");
 const withdrawDialog = document.querySelector(".withdraw-dialog");
+const withdrawTitle = document.querySelector("#withdraw-title");
 const withdrawSummary = document.querySelector(".withdraw-summary");
 const withdrawCancel = document.querySelector(".withdraw-cancel");
 const withdrawConfirm = document.querySelector(".withdraw-confirm");
@@ -112,6 +113,7 @@ const projectDetailBudget = document.querySelector(".project-detail-budget");
 const projectDetailRemaining = document.querySelector(".project-detail-remaining");
 const projectDetailCount = document.querySelector(".project-detail-count");
 const projectDetailRecords = document.querySelector(".project-detail-records");
+const projectDetailWithdraw = document.querySelector(".project-detail-withdraw");
 const hasMonthDetail =
   Boolean(monthDetailButton) &&
   Boolean(monthDetailBackdrop) &&
@@ -257,6 +259,7 @@ let suppressDateClick = false;
 let memoryRecords = [];
 let storageAvailable = true;
 let pendingWithdrawId = null;
+let pendingProjectWithdrawId = null;
 let activeTab = "明细";
 let selectedFlow = "expense";
 let selectedEntryFlow = "expense";
@@ -956,7 +959,7 @@ function renderProjectDetail(projectId = activeProjectDetailId) {
   }
 
   sortedRecords.forEach((record) => {
-    const row = document.createElement("div");
+    const row = document.createElement("button");
     const visual = document.createElement("span");
     const main = document.createElement("span");
     const note = document.createElement("strong");
@@ -964,7 +967,13 @@ function renderProjectDetail(projectId = activeProjectDetailId) {
     const amount = document.createElement("b");
 
     row.className = "project-detail-record";
+    row.type = "button";
+    row.dataset.recordId = String(record.id);
     row.dataset.flow = getRecordFlow(record);
+    row.setAttribute(
+      "aria-label",
+      `打开撤回确认 ${record.note} ${formatDetailMoney(Number(record.amount) || 0, getRecordFlow(record))}`,
+    );
     visual.className = "project-detail-record-visual";
     visual.textContent = getCategoryIcon(record.category);
     main.className = "project-detail-record-main";
@@ -2064,7 +2073,31 @@ function openWithdrawDialog(recordId) {
   }
 
   pendingWithdrawId = String(recordId);
+  pendingProjectWithdrawId = null;
+  withdrawTitle.textContent = "撤回这笔记账？";
   withdrawSummary.textContent = `${targetRecord.note} · ${formatDetailMoney(Number(targetRecord.amount) || 0, getRecordFlow(targetRecord))}`;
+  withdrawConfirm.textContent = "是";
+  withdrawDialog.hidden = false;
+
+  requestAnimationFrame(() => {
+    appScreen.dataset.withdrawOpen = "true";
+    withdrawCancel.focus();
+  });
+}
+
+function openProjectWithdrawDialog(projectId) {
+  const project = getProjectById(projectId);
+
+  if (!project) {
+    return;
+  }
+
+  const recordCount = getProjectRecords(project.id).length;
+  pendingWithdrawId = null;
+  pendingProjectWithdrawId = project.id;
+  withdrawTitle.textContent = "撤回整个项目？";
+  withdrawSummary.textContent = `“${project.name}”将被移除，其中 ${recordCount} 笔收支会保留为普通明细。`;
+  withdrawConfirm.textContent = "撤回项目";
   withdrawDialog.hidden = false;
 
   requestAnimationFrame(() => {
@@ -2080,6 +2113,7 @@ function closeWithdrawDialog() {
     withdrawDialog.hidden = true;
     withdrawSummary.textContent = "";
     pendingWithdrawId = null;
+    pendingProjectWithdrawId = null;
   }, 180);
 }
 
@@ -2147,7 +2181,46 @@ function withdrawRecord(recordId) {
   if (appScreen.dataset.monthDetailOpen === "true") {
     renderMonthDetail();
   }
+  if (appScreen.dataset.projectDetailOpen === "true") {
+    renderProjectDetail();
+  }
   showToast(`已撤回 ${formatDetailMoney(Number(targetRecord.amount) || 0, getRecordFlow(targetRecord))}`);
+}
+
+function withdrawProject(projectId) {
+  const project = getProjectById(projectId);
+
+  if (!project) {
+    return;
+  }
+
+  const records = readRecords();
+  const linkedRecordCount = records.filter(
+    (record) => String(record.projectId || "") === String(project.id),
+  ).length;
+  const unlinkedRecords = records.map((record) => {
+    if (String(record.projectId || "") !== String(project.id)) {
+      return record;
+    }
+
+    return {
+      ...record,
+      projectId: "",
+      projectName: "",
+    };
+  });
+
+  writeProjects(readProjects().filter((item) => item.id !== project.id));
+  writeRecords(unlinkedRecords);
+
+  if (selectedEntryProjectId === project.id) {
+    selectedEntryProjectId = "";
+  }
+
+  closeProjectDetail();
+  renderEntryProjectOptions();
+  renderLedger();
+  showToast(`已撤回项目“${project.name}”，保留 ${linkedRecordCount} 笔明细`);
 }
 
 function saveExpense() {
@@ -2313,18 +2386,39 @@ projectStatusList.addEventListener("click", (event) => {
   }
 });
 
+projectDetailRecords.addEventListener("click", (event) => {
+  const record = event.target.closest(".project-detail-record");
+
+  if (record) {
+    openWithdrawDialog(record.dataset.recordId);
+  }
+});
+
+projectDetailWithdraw.addEventListener("click", () => {
+  if (activeProjectDetailId) {
+    openProjectWithdrawDialog(activeProjectDetailId);
+  }
+});
+
 recordButton.addEventListener("click", openSheet);
 sheetBackdrop.addEventListener("click", closeSheet);
 sheetClose.addEventListener("click", closeSheet);
 withdrawBackdrop.addEventListener("click", closeWithdrawDialog);
 withdrawCancel.addEventListener("click", closeWithdrawDialog);
 withdrawConfirm.addEventListener("click", () => {
-  if (!pendingWithdrawId) {
+  if (!pendingWithdrawId && !pendingProjectWithdrawId) {
     return;
   }
 
   const recordId = pendingWithdrawId;
+  const projectId = pendingProjectWithdrawId;
   closeWithdrawDialog();
+
+  if (projectId) {
+    withdrawProject(projectId);
+    return;
+  }
+
   withdrawRecord(recordId);
 });
 
@@ -2456,6 +2550,11 @@ editResult.addEventListener("click", () => {
 saveResult.addEventListener("click", saveExpense);
 
 document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && appScreen.dataset.withdrawOpen === "true") {
+    closeWithdrawDialog();
+    return;
+  }
+
   if (event.key === "Escape" && appScreen.dataset.projectEditorOpen === "true") {
     closeProjectEditor();
     return;
@@ -2473,11 +2572,6 @@ document.addEventListener("keydown", (event) => {
 
   if (event.key === "Escape" && appScreen.dataset.monthDetailOpen === "true") {
     closeMonthDetail();
-    return;
-  }
-
-  if (event.key === "Escape" && appScreen.dataset.withdrawOpen === "true") {
-    closeWithdrawDialog();
     return;
   }
 
