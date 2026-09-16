@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>智能记账 App - 首页原型</title>
-    <link rel="stylesheet" href="./styles.css?v=month-calendar-detail-safe" />
+    <link rel="stylesheet" href="./styles.css?v=month-navigation" />
   </head>
   <body>
     <main class="preview-stage">
@@ -24,6 +24,9 @@
             data-withdraw-open="false"
             data-report-open="false"
             data-month-detail-open="false"
+            data-project-status="false"
+            data-project-editor-open="false"
+            data-project-detail-open="false"
           >
             <header class="calendar-zone" aria-label="日期选择">
               <button
@@ -50,6 +53,67 @@
                 </button>
               </div>
               <div class="daily-total-panel" aria-label="当天收支汇总">
+                <div class="daily-total-toolbar">
+                  <span>当日收支</span>
+                  <button
+                    class="currency-switch detail-currency-switch"
+                    type="button"
+                    aria-label="更换币种"
+                    aria-controls="detail-currency-popover"
+                    aria-expanded="false"
+                  >
+                    <span class="currency-code">人民币 ¥</span>
+                    <span class="currency-caret" aria-hidden="true"></span>
+                  </button>
+                </div>
+
+                <div
+                  class="currency-popover detail-currency-popover"
+                  id="detail-currency-popover"
+                  hidden
+                >
+                  <button class="currency-option is-active" type="button" data-currency="CNY">
+                    <span>人民币</span>
+                    <small>¥</small>
+                  </button>
+                  <button class="currency-option" type="button" data-currency="USD">
+                    <span>美元</span>
+                    <small>$</small>
+                  </button>
+                  <button class="currency-option" type="button" data-currency="EUR">
+                    <span>欧元</span>
+                    <small>€</small>
+                  </button>
+                  <button class="currency-option" type="button" data-currency="JPY">
+                    <span>日元</span>
+                    <small>¥</small>
+                  </button>
+                  <button class="currency-option" type="button" data-currency="HKD">
+                    <span>港币</span>
+                    <small>HK$</small>
+                  </button>
+                  <button class="currency-option" type="button" data-currency="GBP">
+                    <span>英镑</span>
+                    <small>£</small>
+                  </button>
+                  <button class="currency-option" type="button" data-currency="AUD">
+                    <span>澳元</span>
+                    <small>A$</small>
+                  </button>
+                  <button class="currency-option" type="button" data-currency="CAD">
+                    <span>加元</span>
+                    <small>C$</small>
+                  </button>
+                  <button class="currency-option" type="button" data-currency="SGD">
+                    <span>新加坡元</span>
+                    <small>S$</small>
+                  </button>
+                  <button class="currency-option" type="button" data-currency="KRW">
+                    <span>韩元</span>
+                    <small>₩</small>
+                  </button>
+                </div>
+
                 <dl class="daily-total-list">
                   <div>
                     <dt>收入</dt>
@@ -118,6 +182,7 @@
                       class="currency-switch"
                       type="button"
                       aria-label="更换币种"
+                      aria-controls="asset-currency-popover"
                       aria-expanded="false"
                     >
                       <span class="currency-code">人民币 ¥</span>
@@ -127,7 +192,7 @@
                   </div>
                 </header>
 
-                <div class="currency-popover" hidden>
+                <div class="currency-popover" id="asset-currency-popover" hidden>
                   <button class="currency-option is-active" type="button" data-currency="CNY">
                     <span>人民币</span>
                     <small>¥</small>
@@ -250,6 +315,10 @@
               </section>
             </section>
 
+            <section class="project-status-space" aria-label="当前项目" hidden>
+              <div class="project-status-list"></div>
+            </section>
+
             <section class="ledger-space" aria-label="单次记账详情">
               <div class="ledger-list" aria-live="polite"></div>
             </section>
@@ -298,6 +367,18 @@
                   <div class="entry-category-grid" role="listbox" aria-label="记账类别" tabindex="-1"></div>
                 </div>
 
+                <div class="entry-project-section">
+                  <div class="entry-project-heading">
+                    <div>
+                      <span>计入项目</span>
+                      <small>旅行、活动或长期计划</small>
+                    </div>
+                    <button class="create-project-button" type="button">+ 新建项目</button>
+                  </div>
+                  <div class="entry-project-options" role="listbox" aria-label="选择记账项目"></div>
+                  <p class="entry-project-hint"></p>
+                </div>
+
                 <label class="input-label" for="expense-input">今天买了什么？</label>
                 <div class="input-row">
                   <input
@@ -334,6 +415,10 @@
                     <dd class="confirm-amount"></dd>
                   </div>
                   <div>
+                    <dt>项目</dt>
+                    <dd class="confirm-project">不计入项目</dd>
+                  </div>
+                  <div>
                     <dt>入账日期</dt>
                     <dd class="confirm-time">今天</dd>
                   </div>
@@ -343,6 +428,106 @@
                   <button class="save-result" type="button">确认</button>
                 </div>
               </div>
+            </section>
+
+            <div class="project-editor-backdrop" aria-hidden="true"></div>
+
+            <section
+              class="project-editor-dialog"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="project-editor-title"
+              hidden
+            >
+              <header class="project-dialog-header">
+                <div>
+                  <p>旅行 · 活动 · 计划</p>
+                  <h2 id="project-editor-title">新建项目</h2>
+                </div>
+                <button class="project-editor-close" type="button" aria-label="关闭新建项目">×</button>
+              </header>
+
+              <form class="project-editor-form">
+                <label for="project-name">项目名称</label>
+                <input
+                  id="project-name"
+                  class="project-name-input"
+                  type="text"
+                  maxlength="24"
+                  placeholder="例如：纽约旅行"
+                  required
+                />
+
+                <div class="project-date-fields">
+                  <label>
+                    <span>开始日期</span>
+                    <input class="project-start-input" type="date" required />
+                  </label>
+                  <label>
+                    <span>结束日期</span>
+                    <input class="project-end-input" type="date" required />
+                  </label>
+                </div>
+
+                <label for="project-budget">项目预算（可选）</label>
+                <input
+                  id="project-budget"
+                  class="project-budget-input"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  inputmode="decimal"
+                  placeholder="不填写也可以统计总花费"
+                />
+
+                <p class="project-editor-currency"></p>
+                <p class="project-editor-error" role="alert"></p>
+                <button class="project-editor-save" type="submit">创建并用于本次记账</button>
+              </form>
+            </section>
+
+            <div class="project-detail-backdrop" aria-hidden="true"></div>
+
+            <section
+              class="project-detail-dialog"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="project-detail-title"
+              hidden
+            >
+              <header class="project-dialog-header">
+                <div>
+                  <p class="project-detail-status">项目进行中</p>
+                  <h2 id="project-detail-title">项目详情</h2>
+                </div>
+                <button class="project-detail-close" type="button" aria-label="关闭项目详情">×</button>
+              </header>
+
+              <p class="project-detail-period"></p>
+              <div class="project-detail-progress" aria-hidden="true">
+                <span></span>
+              </div>
+
+              <dl class="project-detail-summary">
+                <div>
+                  <dt>总支出</dt>
+                  <dd class="project-detail-expense">0</dd>
+                </div>
+                <div>
+                  <dt>项目预算</dt>
+                  <dd class="project-detail-budget">未设置</dd>
+                </div>
+                <div>
+                  <dt>预算剩余</dt>
+                  <dd class="project-detail-remaining">—</dd>
+                </div>
+              </dl>
+
+              <div class="project-detail-heading">
+                <strong>项目明细</strong>
+                <span class="project-detail-count">0 笔</span>
+              </div>
+              <div class="project-detail-records"></div>
             </section>
 
             <div class="withdraw-backdrop" aria-hidden="true"></div>
@@ -375,9 +560,16 @@
               <div class="month-detail-header">
                 <div>
                   <p class="month-detail-kicker">日历明细</p>
-                  <h2 id="month-detail-title">本月收支</h2>
+                  <div class="month-detail-title-row">
+                    <button class="month-detail-previous" type="button" aria-label="查看上个月">‹</button>
+                    <h2 id="month-detail-title">本月收支</h2>
+                    <button class="month-detail-next" type="button" aria-label="查看下个月">›</button>
+                  </div>
                 </div>
-                <button class="month-detail-close" type="button" aria-label="关闭日历明细">×</button>
+                <div class="month-detail-actions">
+                  <button class="month-detail-current" type="button">本月</button>
+                  <button class="month-detail-close" type="button" aria-label="关闭日历明细">×</button>
+                </div>
               </div>
 
               <dl class="month-detail-summary" aria-label="本月收支汇总">
@@ -430,6 +622,6 @@
       </section>
     </main>
 
-    <script src="./app.js?v=month-calendar-detail-safe"></script>
+    <script src="./app.js?v=month-navigation"></script>
   </body>
 </html>

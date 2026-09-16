@@ -14,9 +14,9 @@ const recordButton = document.querySelector(".record-button");
 const quickTabs = document.querySelectorAll(".quick-tab");
 const dataView = document.querySelector(".data-view");
 const assetsView = document.querySelector(".assets-view");
-const currencySwitch = document.querySelector(".currency-switch");
-const currencyCode = document.querySelector(".currency-code");
-const currencyPopover = document.querySelector(".currency-popover");
+const currencySwitches = document.querySelectorAll(".currency-switch");
+const currencyCodes = document.querySelectorAll(".currency-code");
+const currencyPopovers = document.querySelectorAll(".currency-popover");
 const currencyOptions = document.querySelectorAll(".currency-option");
 const assetMonthNumber = document.querySelector(".asset-month-number");
 const assetBudgetMonth = document.querySelector(".asset-budget-month");
@@ -53,6 +53,9 @@ const monthDetailBackdrop = document.querySelector(".month-detail-backdrop");
 const monthDetailSheet = document.querySelector(".month-detail-sheet");
 const monthDetailTitle = document.querySelector("#month-detail-title");
 const monthDetailClose = document.querySelector(".month-detail-close");
+const monthDetailPrevious = document.querySelector(".month-detail-previous");
+const monthDetailNext = document.querySelector(".month-detail-next");
+const monthDetailCurrent = document.querySelector(".month-detail-current");
 const monthDetailGrid = document.querySelector(".month-detail-grid");
 const monthDetailIncome = document.querySelector(".month-detail-income");
 const monthDetailExpense = document.querySelector(".month-detail-expense");
@@ -65,6 +68,9 @@ const entryDateContext = document.querySelector(".entry-date-context");
 const entryForm = document.querySelector(".entry-form");
 const entryFlowOptions = document.querySelectorAll(".entry-flow-option");
 const entryCategoryGrid = document.querySelector(".entry-category-grid");
+const entryProjectOptions = document.querySelector(".entry-project-options");
+const entryProjectHint = document.querySelector(".entry-project-hint");
+const createProjectButton = document.querySelector(".create-project-button");
 const inputLabel = document.querySelector(".input-label");
 const expenseInput = document.querySelector(".expense-input");
 const formError = document.querySelector(".form-error");
@@ -73,6 +79,7 @@ const confirmCard = document.querySelector(".confirm-card");
 const confirmNote = document.querySelector(".confirm-note");
 const confirmCategory = document.querySelector(".confirm-category");
 const confirmAmount = document.querySelector(".confirm-amount");
+const confirmProject = document.querySelector(".confirm-project");
 const confirmTime = document.querySelector(".confirm-time");
 const editResult = document.querySelector(".edit-result");
 const saveResult = document.querySelector(".save-result");
@@ -81,12 +88,39 @@ const withdrawDialog = document.querySelector(".withdraw-dialog");
 const withdrawSummary = document.querySelector(".withdraw-summary");
 const withdrawCancel = document.querySelector(".withdraw-cancel");
 const withdrawConfirm = document.querySelector(".withdraw-confirm");
+const projectStatusSpace = document.querySelector(".project-status-space");
+const projectStatusList = document.querySelector(".project-status-list");
+const projectEditorBackdrop = document.querySelector(".project-editor-backdrop");
+const projectEditorDialog = document.querySelector(".project-editor-dialog");
+const projectEditorClose = document.querySelector(".project-editor-close");
+const projectEditorForm = document.querySelector(".project-editor-form");
+const projectNameInput = document.querySelector(".project-name-input");
+const projectStartInput = document.querySelector(".project-start-input");
+const projectEndInput = document.querySelector(".project-end-input");
+const projectBudgetInput = document.querySelector(".project-budget-input");
+const projectEditorCurrency = document.querySelector(".project-editor-currency");
+const projectEditorError = document.querySelector(".project-editor-error");
+const projectDetailBackdrop = document.querySelector(".project-detail-backdrop");
+const projectDetailDialog = document.querySelector(".project-detail-dialog");
+const projectDetailClose = document.querySelector(".project-detail-close");
+const projectDetailTitle = document.querySelector("#project-detail-title");
+const projectDetailStatus = document.querySelector(".project-detail-status");
+const projectDetailPeriod = document.querySelector(".project-detail-period");
+const projectDetailProgress = document.querySelector(".project-detail-progress span");
+const projectDetailExpense = document.querySelector(".project-detail-expense");
+const projectDetailBudget = document.querySelector(".project-detail-budget");
+const projectDetailRemaining = document.querySelector(".project-detail-remaining");
+const projectDetailCount = document.querySelector(".project-detail-count");
+const projectDetailRecords = document.querySelector(".project-detail-records");
 const hasMonthDetail =
   Boolean(monthDetailButton) &&
   Boolean(monthDetailBackdrop) &&
   Boolean(monthDetailSheet) &&
   Boolean(monthDetailTitle) &&
   Boolean(monthDetailClose) &&
+  Boolean(monthDetailPrevious) &&
+  Boolean(monthDetailNext) &&
+  Boolean(monthDetailCurrent) &&
   Boolean(monthDetailGrid) &&
   Boolean(monthDetailIncome) &&
   Boolean(monthDetailExpense) &&
@@ -95,6 +129,7 @@ const hasMonthDetail =
 const storageKey = "bookkeeping-records";
 const currencyStorageKey = "bookkeeping-currency";
 const budgetStorageKey = "bookkeeping-monthly-budgets";
+const projectStorageKey = "bookkeeping-projects";
 const dayNames = ["日", "一", "二", "三", "四", "五", "六"];
 const today = startOfDay(new Date());
 const flowLabels = {
@@ -118,6 +153,7 @@ const currencyProfiles = {
   SGD: { name: "新加坡元", symbol: "S$", rate: 0.18, decimals: 2 },
   KRW: { name: "韩元", symbol: "₩", rate: 190, decimals: 0 },
 };
+const projectColors = ["#6f9faf", "#7f91b5", "#6d9f96", "#a1849a", "#9a8f68"];
 const categoryColors = {
   餐饮: "#8fb9c6",
   交通: "#6f8fa8",
@@ -225,8 +261,11 @@ let activeTab = "明细";
 let selectedFlow = "expense";
 let selectedEntryFlow = "expense";
 let selectedEntryCategory = "";
+let selectedEntryProjectId = "";
 let selectedPeriod = "week";
 let selectedCurrency = readSelectedCurrency();
+let activeProjectDetailId = "";
+let monthDetailViewDate = new Date(today.getFullYear(), today.getMonth(), 1);
 
 function updatePreviewScale() {
   const isPhoneViewport = window.matchMedia("(max-width: 520px)").matches;
@@ -392,6 +431,22 @@ function formatAssetInputAmount(amount) {
     minimumFractionDigits: 0,
     maximumFractionDigits: profile.decimals,
   });
+}
+
+function formatDetailMoney(amount, flow = "expense") {
+  const profile = getCurrencyProfile();
+  const convertedAmount = fromBaseCurrency(Number(amount) || 0);
+  const prefix = flow === "income" ? "+" : convertedAmount < 0 ? "-" : "";
+  const absoluteAmount = Math.abs(convertedAmount).toLocaleString("zh-CN", {
+    minimumFractionDigits: profile.decimals,
+    maximumFractionDigits: profile.decimals,
+  });
+
+  return `${prefix}${profile.symbol}${absoluteAmount}`;
+}
+
+function formatDetailBalanceMoney(amount) {
+  return formatDetailMoney(amount, amount > 0 ? "income" : "expense");
 }
 
 function parseAmountInput(value) {
@@ -579,6 +634,373 @@ function writeMonthlyBudget(amount) {
   } catch {
     storageAvailable = false;
   }
+}
+
+function readProjects() {
+  try {
+    const projects = JSON.parse(window.localStorage.getItem(projectStorageKey) || "[]");
+    if (!Array.isArray(projects)) {
+      return [];
+    }
+
+    return projects
+      .filter((project) => project?.id && project?.name && project?.startDate && project?.endDate)
+      .map((project, index) => ({
+        ...project,
+        id: String(project.id),
+        budget: Math.max(0, Number(project.budget) || 0),
+        color: project.color || projectColors[index % projectColors.length],
+      }))
+      .sort((left, right) => left.startDate.localeCompare(right.startDate));
+  } catch {
+    return [];
+  }
+}
+
+function writeProjects(projects) {
+  try {
+    window.localStorage.setItem(projectStorageKey, JSON.stringify(projects));
+  } catch {
+    storageAvailable = false;
+  }
+}
+
+function isDateWithinProject(dateKey, project) {
+  return dateKey >= project.startDate && dateKey <= project.endDate;
+}
+
+function getProjectsForDate(dateKey = selectedDateKey) {
+  return readProjects().filter((project) => isDateWithinProject(dateKey, project));
+}
+
+function getProjectById(projectId) {
+  return readProjects().find((project) => String(project.id) === String(projectId)) || null;
+}
+
+function getProjectRecords(projectId) {
+  return readRecords().filter((record) => String(record.projectId || "") === String(projectId));
+}
+
+function getProjectTotals(projectId) {
+  const records = getProjectRecords(projectId);
+  const expense = getFlowTotal(records, "expense");
+  const income = getFlowTotal(records, "income");
+
+  return { records, expense, income, balance: income - expense };
+}
+
+function formatProjectDateRange(project) {
+  const start = fromDateKey(project.startDate);
+  const end = fromDateKey(project.endDate);
+  const startText = `${start.getMonth() + 1}月${start.getDate()}日`;
+  const endText = `${end.getMonth() + 1}月${end.getDate()}日`;
+
+  return start.getFullYear() === end.getFullYear()
+    ? `${startText}—${endText}`
+    : `${start.getFullYear()}年${startText}—${end.getFullYear()}年${endText}`;
+}
+
+function getProjectStatus(project) {
+  const todayKey = toDateKey(today);
+
+  if (todayKey < project.startDate) {
+    return { key: "upcoming", label: "即将开始" };
+  }
+  if (todayKey > project.endDate) {
+    return { key: "ended", label: "已结束" };
+  }
+
+  return { key: "active", label: "进行中" };
+}
+
+function getProjectProgress(project, date = today) {
+  const start = fromDateKey(project.startDate);
+  const end = fromDateKey(project.endDate);
+  const totalDays = Math.max(1, Math.round((end - start) / 86400000) + 1);
+  const elapsedDays = Math.round((startOfDay(date) - start) / 86400000) + 1;
+
+  return Math.max(0, Math.min(1, elapsedDays / totalDays));
+}
+
+function getSelectedProjectStatusLabel() {
+  const state = getSelectedDateState();
+
+  if (state === "past") {
+    return "当时进行中";
+  }
+  if (state === "future") {
+    return "计划中";
+  }
+
+  return "项目进行中";
+}
+
+function renderProjectStatus() {
+  const projects = getProjectsForDate(selectedDateKey);
+  const hasProjects = projects.length > 0;
+  const fragment = document.createDocumentFragment();
+
+  projectStatusSpace.hidden = !hasProjects;
+  appScreen.dataset.projectStatus = String(hasProjects);
+
+  projects.forEach((project) => {
+    const { records, expense } = getProjectTotals(project.id);
+    const card = document.createElement("button");
+    const top = document.createElement("span");
+    const badge = document.createElement("span");
+    const period = document.createElement("span");
+    const name = document.createElement("strong");
+    const footer = document.createElement("span");
+    const summary = document.createElement("span");
+    const progress = document.createElement("span");
+    const progressValue = document.createElement("span");
+
+    card.className = "project-status-card";
+    card.type = "button";
+    card.dataset.projectId = project.id;
+    card.style.setProperty("--project-color", project.color);
+    card.setAttribute(
+      "aria-label",
+      `查看项目 ${project.name}，已支出 ${formatDetailMoney(expense)}`,
+    );
+
+    top.className = "project-status-top";
+    badge.className = "project-status-badge";
+    badge.textContent = getSelectedProjectStatusLabel();
+    period.className = "project-status-period";
+    period.textContent = formatProjectDateRange(project);
+    name.className = "project-status-name";
+    name.textContent = project.name;
+    footer.className = "project-status-footer";
+    summary.textContent = `${records.length} 笔 · 已支出 ${formatDetailMoney(expense)}`;
+    progress.className = "project-status-progress";
+    progressValue.style.width = `${Math.round(getProjectProgress(project, getSelectedDate()) * 100)}%`;
+
+    top.append(badge, period);
+    progress.append(progressValue);
+    footer.append(summary, progress);
+    card.append(top, name, footer);
+    fragment.append(card);
+  });
+
+  projectStatusList.replaceChildren(fragment);
+}
+
+function renderEntryProjectOptions() {
+  const projects = getProjectsForDate(selectedDateKey);
+  const selectedProjectExists = projects.some((project) => project.id === selectedEntryProjectId);
+  const fragment = document.createDocumentFragment();
+
+  if (selectedEntryProjectId && !selectedProjectExists) {
+    selectedEntryProjectId = "";
+  }
+
+  const noProjectButton = document.createElement("button");
+  noProjectButton.className = "entry-project-option";
+  noProjectButton.classList.toggle("is-active", !selectedEntryProjectId);
+  noProjectButton.type = "button";
+  noProjectButton.dataset.projectId = "";
+  noProjectButton.setAttribute("role", "option");
+  noProjectButton.setAttribute("aria-selected", String(!selectedEntryProjectId));
+  noProjectButton.textContent = "不计入项目";
+  fragment.append(noProjectButton);
+
+  projects.forEach((project) => {
+    const option = document.createElement("button");
+    const dot = document.createElement("span");
+    const label = document.createElement("span");
+    const isActive = project.id === selectedEntryProjectId;
+
+    option.className = "entry-project-option";
+    option.classList.toggle("is-active", isActive);
+    option.type = "button";
+    option.dataset.projectId = project.id;
+    option.setAttribute("role", "option");
+    option.setAttribute("aria-selected", String(isActive));
+    option.style.setProperty("--project-color", project.color);
+    dot.className = "entry-project-dot";
+    dot.setAttribute("aria-hidden", "true");
+    label.textContent = project.name;
+    option.append(dot, label);
+    fragment.append(option);
+  });
+
+  entryProjectOptions.replaceChildren(fragment);
+  entryProjectHint.textContent = projects.length
+    ? `只显示覆盖 ${formatMonthDay(getSelectedDate())} 的项目`
+    : `当前日期还没有项目，可以新建旅行或活动`;
+}
+
+function setEntryProject(projectId) {
+  const normalizedId = String(projectId || "");
+
+  if (normalizedId && !getProjectsForDate(selectedDateKey).some((project) => project.id === normalizedId)) {
+    return;
+  }
+
+  selectedEntryProjectId = normalizedId;
+  formError.textContent = "";
+  renderEntryProjectOptions();
+}
+
+function getSelectedEntryProject() {
+  return selectedEntryProjectId ? getProjectById(selectedEntryProjectId) : null;
+}
+
+function openProjectEditor() {
+  const selectedDate = getSelectedDate();
+
+  projectEditorForm.reset();
+  projectStartInput.value = selectedDateKey;
+  projectEndInput.value = toDateKey(addDays(selectedDate, 7));
+  projectEditorCurrency.textContent = `预算将按 ${formatCurrencyLabel()} 输入`;
+  projectEditorError.textContent = "";
+  projectEditorDialog.hidden = false;
+
+  requestAnimationFrame(() => {
+    appScreen.dataset.projectEditorOpen = "true";
+    projectNameInput.focus();
+  });
+}
+
+function closeProjectEditor() {
+  appScreen.dataset.projectEditorOpen = "false";
+
+  window.setTimeout(() => {
+    projectEditorDialog.hidden = true;
+  }, 180);
+}
+
+function saveProject(event) {
+  event.preventDefault();
+
+  const name = projectNameInput.value.trim();
+  const startDate = projectStartInput.value;
+  const endDate = projectEndInput.value;
+  const budgetText = projectBudgetInput.value.trim();
+  const displayBudget = budgetText ? parseAmountInput(budgetText) : 0;
+
+  projectEditorError.textContent = "";
+
+  if (!name) {
+    projectEditorError.textContent = "请输入项目名称";
+    projectNameInput.focus();
+    return;
+  }
+  if (!startDate || !endDate || startDate > endDate) {
+    projectEditorError.textContent = "请选择正确的开始和结束日期";
+    return;
+  }
+  if (selectedDateKey < startDate || selectedDateKey > endDate) {
+    projectEditorError.textContent = "当前记账日期需要在项目日期范围内";
+    return;
+  }
+  if (displayBudget === null) {
+    projectEditorError.textContent = "请输入有效的预算金额";
+    projectBudgetInput.focus();
+    return;
+  }
+
+  const projects = readProjects();
+  const project = {
+    id: `project-${Date.now()}`,
+    name,
+    startDate,
+    endDate,
+    budget: displayBudget > 0 ? toBaseCurrency(displayBudget) : 0,
+    color: projectColors[projects.length % projectColors.length],
+    createdAt: new Date().toISOString(),
+  };
+
+  writeProjects([...projects, project]);
+  selectedEntryProjectId = project.id;
+  renderEntryProjectOptions();
+  renderProjectStatus();
+  closeProjectEditor();
+  showToast(`已创建项目“${project.name}”`);
+}
+
+function renderProjectDetail(projectId = activeProjectDetailId) {
+  const project = getProjectById(projectId);
+
+  if (!project) {
+    return;
+  }
+
+  const status = getProjectStatus(project);
+  const totals = getProjectTotals(project.id);
+  const remaining = project.budget - totals.expense;
+  const sortedRecords = [...totals.records].sort((left, right) => {
+    const dateCompare = String(right.dateKey).localeCompare(String(left.dateKey));
+    return dateCompare || Number(right.id || 0) - Number(left.id || 0);
+  });
+  const fragment = document.createDocumentFragment();
+
+  projectDetailDialog.style.setProperty("--project-color", project.color);
+  projectDetailTitle.textContent = project.name;
+  projectDetailStatus.textContent = status.label;
+  projectDetailStatus.dataset.status = status.key;
+  projectDetailPeriod.textContent = `${formatProjectDateRange(project)} · ${Math.round(getProjectProgress(project) * 100)}%`;
+  projectDetailProgress.style.width = `${Math.round(getProjectProgress(project) * 100)}%`;
+  projectDetailExpense.textContent = formatDetailMoney(totals.expense);
+  projectDetailBudget.textContent = project.budget > 0 ? formatDetailMoney(project.budget) : "未设置";
+  projectDetailRemaining.textContent = project.budget > 0 ? formatDetailBalanceMoney(remaining) : "—";
+  projectDetailRemaining.classList.toggle("is-negative", project.budget > 0 && remaining < 0);
+  projectDetailCount.textContent = `${totals.records.length} 笔`;
+
+  if (!sortedRecords.length) {
+    const empty = document.createElement("p");
+    empty.className = "project-detail-empty";
+    empty.textContent = "还没有计入这个项目的记录";
+    fragment.append(empty);
+  }
+
+  sortedRecords.forEach((record) => {
+    const row = document.createElement("div");
+    const visual = document.createElement("span");
+    const main = document.createElement("span");
+    const note = document.createElement("strong");
+    const meta = document.createElement("small");
+    const amount = document.createElement("b");
+
+    row.className = "project-detail-record";
+    row.dataset.flow = getRecordFlow(record);
+    visual.className = "project-detail-record-visual";
+    visual.textContent = getCategoryIcon(record.category);
+    main.className = "project-detail-record-main";
+    note.textContent = record.note;
+    meta.textContent = `${record.dateLabel} · ${normalizeCategoryName(record.category)}`;
+    amount.textContent = formatDetailMoney(Number(record.amount) || 0, getRecordFlow(record));
+    main.append(note, meta);
+    row.append(visual, main, amount);
+    fragment.append(row);
+  });
+
+  projectDetailRecords.replaceChildren(fragment);
+}
+
+function openProjectDetail(projectId) {
+  if (!getProjectById(projectId)) {
+    return;
+  }
+
+  activeProjectDetailId = String(projectId);
+  renderProjectDetail();
+  projectDetailDialog.hidden = false;
+
+  requestAnimationFrame(() => {
+    appScreen.dataset.projectDetailOpen = "true";
+    projectDetailClose.focus();
+  });
+}
+
+function closeProjectDetail() {
+  appScreen.dataset.projectDetailOpen = "false";
+
+  window.setTimeout(() => {
+    projectDetailDialog.hidden = true;
+    activeProjectDetailId = "";
+  }, 180);
 }
 
 function getPeriodRecords(flow = selectedFlow, period = selectedPeriod) {
@@ -864,8 +1286,17 @@ function renderAssetsView() {
   assetNet.textContent = formatAssetMoney(totalIncome - totalExpense);
   assetTotal.textContent = formatAssetMoney(totalIncome);
   assetLiability.textContent = formatAssetMoney(totalExpense);
-  currencyCode.textContent = formatCurrencyLabel();
-  currencySwitch.setAttribute("aria-label", `更换币种，当前为${formatCurrencyLabel()}`);
+  renderCurrencyControls();
+}
+
+function renderCurrencyControls() {
+  currencyCodes.forEach((code) => {
+    code.textContent = formatCurrencyLabel();
+  });
+
+  currencySwitches.forEach((button) => {
+    button.setAttribute("aria-label", `更换币种，当前为${formatCurrencyLabel()}`);
+  });
 
   currencyOptions.forEach((option) => {
     const profile = currencyProfiles[option.dataset.currency];
@@ -882,12 +1313,26 @@ function renderAssetsView() {
   });
 }
 
-function toggleCurrencyPopover(forceOpen) {
-  const willOpen =
-    typeof forceOpen === "boolean" ? forceOpen : currencyPopover.hasAttribute("hidden");
+function closeCurrencyPopovers() {
+  currencySwitches.forEach((button) => button.setAttribute("aria-expanded", "false"));
+  currencyPopovers.forEach((popover) => popover.setAttribute("hidden", ""));
+}
 
-  currencySwitch.setAttribute("aria-expanded", String(willOpen));
-  currencyPopover.toggleAttribute("hidden", !willOpen);
+function toggleCurrencyPopover(button, forceOpen) {
+  const popoverId = button?.getAttribute("aria-controls");
+  const popover = popoverId ? document.getElementById(popoverId) : null;
+
+  if (!popover) {
+    return;
+  }
+
+  const willOpen = typeof forceOpen === "boolean" ? forceOpen : popover.hasAttribute("hidden");
+  closeCurrencyPopovers();
+
+  if (willOpen) {
+    button.setAttribute("aria-expanded", "true");
+    popover.removeAttribute("hidden");
+  }
 }
 
 function selectCurrency(currency) {
@@ -897,8 +1342,17 @@ function selectCurrency(currency) {
 
   selectedCurrency = currency;
   writeSelectedCurrency(currency);
-  toggleCurrencyPopover(false);
+  closeCurrencyPopovers();
+  renderCurrencyControls();
+  renderLedger();
   renderAssetsView();
+  syncEntryDateContext();
+  if (appScreen.dataset.monthDetailOpen === "true") {
+    renderMonthDetail();
+  }
+  if (appScreen.dataset.projectDetailOpen === "true") {
+    renderProjectDetail();
+  }
   showToast(`已切换为${currencyProfiles[currency].name}`);
 }
 
@@ -969,17 +1423,21 @@ function renderMonthDetail() {
     return;
   }
 
-  const selectedDate = getSelectedDate();
-  const { dailyTotals, monthEnd, monthStart, records } = buildMonthlyCalendar(selectedDate);
+  const viewDate = monthDetailViewDate;
+  const { dailyTotals, monthEnd, monthStart, records } = buildMonthlyCalendar(viewDate);
   const incomeTotal = getFlowTotal(records, "income");
   const expenseTotal = getFlowTotal(records, "expense");
   const balanceTotal = incomeTotal - expenseTotal;
   const fragment = document.createDocumentFragment();
+  const isCurrentMonth = isSameMonth(viewDate, today.getFullYear(), today.getMonth());
 
-  monthDetailTitle.textContent = `${selectedDate.getFullYear()}年${selectedDate.getMonth() + 1}月明细`;
-  monthDetailIncome.textContent = `+${formatMoney(incomeTotal)}`;
-  monthDetailExpense.textContent = formatMoney(expenseTotal);
-  monthDetailBalance.textContent = formatBalanceMoney(balanceTotal);
+  monthDetailTitle.textContent = `${viewDate.getFullYear()}年${viewDate.getMonth() + 1}月明细`;
+  monthDetailCurrent.classList.toggle("is-current", isCurrentMonth);
+  monthDetailCurrent.textContent = "本月";
+  monthDetailCurrent.setAttribute("aria-label", isCurrentMonth ? "当前已是本月" : "回到本月");
+  monthDetailIncome.textContent = formatDetailMoney(incomeTotal, "income");
+  monthDetailExpense.textContent = formatDetailMoney(expenseTotal);
+  monthDetailBalance.textContent = formatDetailBalanceMoney(balanceTotal);
   monthDetailBalance.classList.toggle("is-negative", balanceTotal < 0);
 
   for (let index = 0; index < monthStart.getDay(); index += 1) {
@@ -990,7 +1448,7 @@ function renderMonthDetail() {
   }
 
   for (let day = 1; day <= monthEnd.getDate(); day += 1) {
-    const date = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), day);
+    const date = new Date(viewDate.getFullYear(), viewDate.getMonth(), day);
     const dateKey = toDateKey(date);
     const totals = dailyTotals.get(dateKey) || { income: 0, expense: 0, count: 0 };
     const dayButton = document.createElement("button");
@@ -1006,7 +1464,7 @@ function renderMonthDetail() {
     dayButton.classList.toggle("has-records", hasRecords);
     dayButton.setAttribute(
       "aria-label",
-      `${formatMonthDay(date)} 收入${formatMoney(totals.income)} 支出${formatMoney(totals.expense)}`,
+      `${formatMonthDay(date)} 收入${formatDetailMoney(totals.income, "income")} 支出${formatDetailMoney(totals.expense)}`,
     );
 
     const number = document.createElement("span");
@@ -1044,11 +1502,27 @@ function renderMonthDetail() {
   monthDetailGrid.replaceChildren(fragment);
 }
 
+function shiftMonthDetail(monthOffset) {
+  monthDetailViewDate = new Date(
+    monthDetailViewDate.getFullYear(),
+    monthDetailViewDate.getMonth() + monthOffset,
+    1,
+  );
+  renderMonthDetail();
+}
+
+function resetMonthDetailToCurrent() {
+  monthDetailViewDate = new Date(today.getFullYear(), today.getMonth(), 1);
+  renderMonthDetail();
+}
+
 function openMonthDetail() {
   if (!hasMonthDetail) {
     return;
   }
 
+  const selectedDate = getSelectedDate();
+  monthDetailViewDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
   renderMonthDetail();
   monthDetailSheet.hidden = false;
 
@@ -1118,6 +1592,7 @@ function syncEntryDateContext() {
   const state = getSelectedDateState();
   const dateText = state === "today" ? "今天" : formatEntryDate(selectedDate);
   const flowText = flowLabels[selectedEntryFlow];
+  const currencyText = formatCurrencyLabel();
 
   entryTitle.textContent = state === "past" ? `补记${flowText}` : `快速记${flowText}`;
   entryDateContext.textContent =
@@ -1127,13 +1602,17 @@ function syncEntryDateContext() {
 
   if (selectedEntryFlow === "income") {
     inputLabel.textContent =
-      state === "past" ? `${formatMonthDay(selectedDate)}漏记了哪笔收入？` : `${dateText}收了什么？`;
+      state === "past"
+        ? `${formatMonthDay(selectedDate)}漏记了哪笔收入？（${currencyText}）`
+        : `${dateText}收了什么？（${currencyText}）`;
     expenseInput.placeholder = "工资 5000";
     return;
   }
 
   inputLabel.textContent =
-    state === "past" ? `${formatMonthDay(selectedDate)}漏记了什么？` : `${dateText}买了什么？`;
+    state === "past"
+      ? `${formatMonthDay(selectedDate)}漏记了什么？（${currencyText}）`
+      : `${dateText}买了什么？（${currencyText}）`;
   expenseInput.placeholder = "海底捞 422";
 }
 
@@ -1212,6 +1691,7 @@ function renderEntryFlowOptions() {
   });
   appScreen.dataset.entryFlow = selectedEntryFlow;
   renderEntryCategoryCards();
+  renderEntryProjectOptions();
   renderQuickExamples();
   syncEntryDateContext();
 }
@@ -1273,11 +1753,11 @@ function updateMonthOptions() {
   });
 }
 
-function buildDateStrip() {
+function buildDateStrip(centerDate = today) {
   const fragment = document.createDocumentFragment();
 
   for (let offset = -60; offset <= 45; offset += 1) {
-    const date = addDays(today, offset);
+    const date = addDays(centerDate, offset);
     const dateKey = toDateKey(date);
     const button = document.createElement("button");
     button.className = "date-item";
@@ -1321,6 +1801,14 @@ function scrollSelectedDateIntoView(smooth = true) {
 function selectDate(dateKey, shouldToast = true) {
   selectedDateKey = dateKey;
 
+  const dateExistsInStrip = [...dateStrip.querySelectorAll(".date-item")].some(
+    (dateItem) => dateItem.dataset.dateKey === selectedDateKey,
+  );
+
+  if (!dateExistsInStrip) {
+    buildDateStrip(getSelectedDate());
+  }
+
   dateStrip.querySelectorAll(".date-item").forEach((dateItem) => {
     const isSelected = dateItem.dataset.dateKey === selectedDateKey;
     dateItem.classList.toggle("is-selected", isSelected);
@@ -1344,6 +1832,8 @@ function selectDate(dateKey, shouldToast = true) {
 function openSheet() {
   selectedEntryFlow = "expense";
   selectedEntryCategory = "";
+  const activeProjects = getProjectsForDate(selectedDateKey);
+  selectedEntryProjectId = activeProjects.length === 1 ? activeProjects[0].id : "";
   renderEntryFlowOptions();
   syncEntryDateContext();
   sheet.hidden = false;
@@ -1369,6 +1859,7 @@ function resetEntry() {
   formError.textContent = "";
   expenseInput.value = "";
   renderEntryCategoryCards();
+  renderEntryProjectOptions();
 }
 
 function normalizeRecordText(value) {
@@ -1423,27 +1914,32 @@ function parseExpense(rawValue) {
     return null;
   }
 
-  const amount = Number(amountMatch[1]);
+  const inputAmount = Number(amountMatch[1]);
   const note = value
     .replace(amountMatch[0], "")
     .replace(/[￥¥元块]/g, "")
     .trim();
 
-  if (!note || !Number.isFinite(amount) || amount <= 0) {
+  if (!note || !Number.isFinite(inputAmount) || inputAmount <= 0) {
     return null;
   }
 
   const selectedDate = getSelectedDate();
   const selectedCategory = getSelectedEntryCategory();
+  const selectedProject = getSelectedEntryProject();
 
   return {
     note,
-    amount,
+    amount: toBaseCurrency(inputAmount),
+    inputAmount,
+    inputCurrency: selectedCurrency,
     category: selectedCategory ? formatCategoryLabel(selectedCategory) : classifyRecord(note),
     flow: selectedEntryFlow,
     dateKey: selectedDateKey,
     dateLabel: formatDateLabel(selectedDate),
     time: formatDateLabel(selectedDate),
+    projectId: selectedProject?.id || "",
+    projectName: selectedProject?.name || "",
   };
 }
 
@@ -1451,7 +1947,8 @@ function renderConfirm(expense) {
   parsedExpense = expense;
   confirmNote.textContent = expense.note;
   confirmCategory.textContent = expense.category;
-  confirmAmount.textContent = formatRecordMoney(expense.amount, expense.flow);
+  confirmProject.textContent = expense.projectName || "不计入项目";
+  confirmAmount.textContent = formatDetailMoney(expense.amount, expense.flow);
   confirmTime.textContent = expense.time;
   entryForm.hidden = true;
   confirmCard.hidden = false;
@@ -1462,9 +1959,9 @@ function renderDailyTotals(records) {
   const expenseTotal = getFlowTotal(records, "expense");
   const balanceTotal = incomeTotal - expenseTotal;
 
-  dailyIncomeTotal.textContent = formatRecordMoney(incomeTotal, "income");
-  dailyExpenseTotal.textContent = formatMoney(expenseTotal);
-  dailyBalanceTotal.textContent = formatBalanceMoney(balanceTotal);
+  dailyIncomeTotal.textContent = formatDetailMoney(incomeTotal, "income");
+  dailyExpenseTotal.textContent = formatDetailMoney(expenseTotal);
+  dailyBalanceTotal.textContent = formatDetailBalanceMoney(balanceTotal);
   dailyBalanceTotal.classList.toggle("is-negative", balanceTotal < 0);
 }
 
@@ -1473,7 +1970,9 @@ function renderLedger() {
     .sort((a, b) => Number(b.id || 0) - Number(a.id || 0));
 
   const fragment = document.createDocumentFragment();
+  renderCurrencyControls();
   renderDailyTotals(selectedRecords);
+  renderProjectStatus();
 
   if (!selectedRecords.length) {
     const empty = document.createElement("div");
@@ -1497,7 +1996,7 @@ function renderLedger() {
     item.dataset.flow = getRecordFlow(record);
     item.setAttribute(
       "aria-label",
-      `打开撤回确认 ${record.note} ${formatRecordMoney(Number(record.amount) || 0, getRecordFlow(record))}`,
+      `打开撤回确认 ${record.note} ${formatDetailMoney(Number(record.amount) || 0, getRecordFlow(record))}`,
     );
     item.addEventListener("click", (event) => {
       event.stopPropagation();
@@ -1530,12 +2029,23 @@ function renderLedger() {
       meta.append(backfillBadge);
     }
 
+    if (record.projectName || record.projectId) {
+      const projectBadge = document.createElement("span");
+      const linkedProject = getProjectById(record.projectId);
+      projectBadge.className = "ledger-project";
+      projectBadge.textContent = record.projectName || linkedProject?.name || "项目";
+      if (linkedProject?.color) {
+        projectBadge.style.setProperty("--project-color", linkedProject.color);
+      }
+      meta.append(projectBadge);
+    }
+
     const time = document.createElement("span");
     time.textContent = `${record.dateLabel} ${record.recordTime}`;
 
     const amount = document.createElement("div");
     amount.className = "ledger-amount";
-    amount.textContent = formatRecordMoney(Number(record.amount) || 0, getRecordFlow(record));
+    amount.textContent = formatDetailMoney(Number(record.amount) || 0, getRecordFlow(record));
 
     meta.append(category, time);
     main.append(note, meta);
@@ -1554,7 +2064,7 @@ function openWithdrawDialog(recordId) {
   }
 
   pendingWithdrawId = String(recordId);
-  withdrawSummary.textContent = `${targetRecord.note} · ${formatRecordMoney(Number(targetRecord.amount) || 0, getRecordFlow(targetRecord))}`;
+  withdrawSummary.textContent = `${targetRecord.note} · ${formatDetailMoney(Number(targetRecord.amount) || 0, getRecordFlow(targetRecord))}`;
   withdrawDialog.hidden = false;
 
   requestAnimationFrame(() => {
@@ -1595,6 +2105,9 @@ function setActiveTab(tabName) {
   if (tabName !== "明细" && appScreen.dataset.monthDetailOpen === "true") {
     closeMonthDetail();
   }
+  if (tabName !== "明细" && appScreen.dataset.projectDetailOpen === "true") {
+    closeProjectDetail();
+  }
 }
 
 function openReportDialog() {
@@ -1634,7 +2147,7 @@ function withdrawRecord(recordId) {
   if (appScreen.dataset.monthDetailOpen === "true") {
     renderMonthDetail();
   }
-  showToast(`已撤回 ${formatRecordMoney(Number(targetRecord.amount) || 0, getRecordFlow(targetRecord))}`);
+  showToast(`已撤回 ${formatDetailMoney(Number(targetRecord.amount) || 0, getRecordFlow(targetRecord))}`);
 }
 
 function saveExpense() {
@@ -1663,7 +2176,7 @@ function saveExpense() {
   }
   closeSheet();
   const toastPrefix = savedExpense.isBackfilled ? "已补记" : "已记账";
-  showToast(`${toastPrefix}${flowLabels[savedExpense.flow]} ${savedExpense.dateLabel} ${formatRecordMoney(savedExpense.amount, savedExpense.flow)}`);
+  showToast(`${toastPrefix}${flowLabels[savedExpense.flow]} ${savedExpense.dateLabel} ${formatDetailMoney(savedExpense.amount, savedExpense.flow)}`);
 }
 
 function selectMonth(year, month) {
@@ -1792,6 +2305,14 @@ ledgerList.addEventListener("click", (event) => {
   openWithdrawDialog(ledgerItem.dataset.recordId);
 });
 
+projectStatusList.addEventListener("click", (event) => {
+  const card = event.target.closest(".project-status-card");
+
+  if (card) {
+    openProjectDetail(card.dataset.projectId);
+  }
+});
+
 recordButton.addEventListener("click", openSheet);
 sheetBackdrop.addEventListener("click", closeSheet);
 sheetClose.addEventListener("click", closeSheet);
@@ -1818,6 +2339,9 @@ if (hasMonthDetail) {
   });
   monthDetailBackdrop.addEventListener("click", closeMonthDetail);
   monthDetailClose.addEventListener("click", closeMonthDetail);
+  monthDetailPrevious.addEventListener("click", () => shiftMonthDetail(-1));
+  monthDetailNext.addEventListener("click", () => shiftMonthDetail(1));
+  monthDetailCurrent.addEventListener("click", resetMonthDetailToCurrent);
   monthDetailGrid.addEventListener("click", (event) => {
     const day = event.target.closest(".month-day");
 
@@ -1830,12 +2354,16 @@ if (hasMonthDetail) {
   });
 }
 
-currencySwitch.addEventListener("click", (event) => {
-  event.stopPropagation();
-  toggleCurrencyPopover();
+currencySwitches.forEach((button) => {
+  button.addEventListener("click", (event) => {
+    event.stopPropagation();
+    toggleCurrencyPopover(button);
+  });
 });
-currencyPopover.addEventListener("click", (event) => {
-  event.stopPropagation();
+currencyPopovers.forEach((popover) => {
+  popover.addEventListener("click", (event) => {
+    event.stopPropagation();
+  });
 });
 currencyOptions.forEach((option) => {
   option.addEventListener("click", () => selectCurrency(option.dataset.currency));
@@ -1879,6 +2407,23 @@ entryCategoryGrid.addEventListener("click", (event) => {
   expenseInput.focus();
 });
 
+entryProjectOptions.addEventListener("click", (event) => {
+  const option = event.target.closest(".entry-project-option");
+
+  if (!option) {
+    return;
+  }
+
+  setEntryProject(option.dataset.projectId);
+});
+
+createProjectButton.addEventListener("click", openProjectEditor);
+projectEditorBackdrop.addEventListener("click", closeProjectEditor);
+projectEditorClose.addEventListener("click", closeProjectEditor);
+projectEditorForm.addEventListener("submit", saveProject);
+projectDetailBackdrop.addEventListener("click", closeProjectDetail);
+projectDetailClose.addEventListener("click", closeProjectDetail);
+
 quickExamples.forEach((button) => {
   button.addEventListener("click", () => {
     expenseInput.value = button.dataset.example;
@@ -1911,6 +2456,16 @@ editResult.addEventListener("click", () => {
 saveResult.addEventListener("click", saveExpense);
 
 document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && appScreen.dataset.projectEditorOpen === "true") {
+    closeProjectEditor();
+    return;
+  }
+
+  if (event.key === "Escape" && appScreen.dataset.projectDetailOpen === "true") {
+    closeProjectDetail();
+    return;
+  }
+
   if (event.key === "Escape" && appScreen.dataset.reportOpen === "true") {
     closeReportDialog();
     return;
@@ -1937,5 +2492,5 @@ document.addEventListener("keydown", (event) => {
 });
 
 document.addEventListener("click", () => {
-  toggleCurrencyPopover(false);
+  closeCurrencyPopovers();
 });
