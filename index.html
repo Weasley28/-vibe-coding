@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>智能记账 App - 首页原型</title>
-    <link rel="stylesheet" href="./styles.css?v=currency-no-exchange" />
+    <link rel="stylesheet" href="./styles.css?v=data-backup" />
   </head>
   <body>
     <main class="preview-stage">
@@ -48,8 +48,8 @@
               <div class="selected-date-chip" aria-live="polite">
                 <span class="selected-date-text">今天</span>
                 <strong class="selected-date-mode">可记账</strong>
-                <button class="month-detail-button" type="button" aria-label="查看本月日历明细">
-                  月历
+                <button class="month-detail-button" type="button" aria-label="查看月度日历和流水">
+                  月账
                 </button>
               </div>
               <div class="daily-total-panel" aria-label="当天收支汇总">
@@ -313,6 +313,31 @@
                   </div>
                 </dl>
               </section>
+
+              <section class="asset-card backup-card" aria-label="数据备份">
+                <header class="backup-header">
+                  <div>
+                    <p>不用登录也能恢复</p>
+                    <h2>数据保险箱</h2>
+                  </div>
+                  <span class="backup-local-badge">本机保存</span>
+                </header>
+
+                <div class="backup-overview">
+                  <span class="backup-icon" aria-hidden="true">↓</span>
+                  <div>
+                    <strong class="backup-record-count">0 笔记录</strong>
+                    <span class="backup-local-status">建议每月导出一次备份</span>
+                  </div>
+                </div>
+
+                <div class="backup-actions">
+                  <button class="backup-export" type="button">导出备份</button>
+                  <button class="backup-import" type="button">恢复备份</button>
+                </div>
+                <input class="backup-file-input" type="file" accept="application/json,.json" hidden />
+                <p class="backup-message" role="status">备份文件只保存在你自己的设备上</p>
+              </section>
             </section>
 
             <section class="project-status-space" aria-label="当前项目" hidden>
@@ -389,15 +414,26 @@
                     autocomplete="off"
                     
                     enterkeyhint="done"
-                    placeholder="海底捞 422"
+                    placeholder="地铁 2.9*2"
                   />
                   <button class="parse-button" type="submit">确定</button>
+                </div>
+                <div class="entry-quantity-row">
+                  <div>
+                    <strong>份数</strong>
+                    <small class="entry-quantity-hint">也可直接输入：地铁 2.9*2</small>
+                  </div>
+                  <div class="entry-quantity-stepper" aria-label="选择份数">
+                    <button class="entry-quantity-decrease" type="button" aria-label="减少一份">−</button>
+                    <output class="entry-quantity-value" aria-live="polite">×1</output>
+                    <button class="entry-quantity-increase" type="button" aria-label="增加一份">+</button>
+                  </div>
                 </div>
                 <p class="form-error" role="alert"></p>
 
                 <div class="quick-examples" aria-label="快速示例">
                   <button type="button" data-example="早餐 12">早餐 12</button>
-                  <button type="button" data-example="打车 25">打车 25</button>
+                  <button type="button" data-example="地铁 2.9*2">地铁 2.9×2</button>
                   <button type="button" data-example="超市日用品 156">日用品 156</button>
                 </div>
               </form>
@@ -413,6 +449,10 @@
                   <div>
                     <dt>金额</dt>
                     <dd class="confirm-amount"></dd>
+                  </div>
+                  <div>
+                    <dt>计算</dt>
+                    <dd class="confirm-calculation"></dd>
                   </div>
                   <div>
                     <dt>项目</dt>
@@ -591,16 +631,31 @@
                 </div>
               </dl>
 
-              <div class="month-weekdays" aria-hidden="true">
-                <span>日</span>
-                <span>一</span>
-                <span>二</span>
-                <span>三</span>
-                <span>四</span>
-                <span>五</span>
-                <span>六</span>
+              <div class="month-detail-view-toggle" role="tablist" aria-label="月度查看方式">
+                <button class="month-detail-view-option is-active" type="button" role="tab" aria-selected="true" data-month-view="calendar">
+                  日历
+                </button>
+                <button class="month-detail-view-option" type="button" role="tab" aria-selected="false" data-month-view="flow">
+                  流水
+                </button>
               </div>
-              <div class="month-detail-grid" role="grid" aria-label="本月每天收支"></div>
+
+              <div class="month-calendar-view">
+                <div class="month-weekdays" aria-hidden="true">
+                  <span>日</span>
+                  <span>一</span>
+                  <span>二</span>
+                  <span>三</span>
+                  <span>四</span>
+                  <span>五</span>
+                  <span>六</span>
+                </div>
+                <div class="month-detail-grid" role="grid" aria-label="本月每天收支"></div>
+              </div>
+
+              <div class="month-flow-view" hidden>
+                <div class="month-flow-list" aria-label="本月逐笔流水"></div>
+              </div>
             </section>
 
             <div class="report-backdrop" aria-hidden="true"></div>
@@ -626,6 +681,6 @@
       </section>
     </main>
 
-    <script src="./app.js?v=currency-no-exchange"></script>
+    <script src="./app.js?v=data-backup"></script>
   </body>
 </html>

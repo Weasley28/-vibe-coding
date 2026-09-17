@@ -32,6 +32,12 @@ const budgetSpent = document.querySelector(".budget-spent");
 const assetNet = document.querySelector(".asset-net");
 const assetTotal = document.querySelector(".asset-total");
 const assetLiability = document.querySelector(".asset-liability");
+const backupRecordCount = document.querySelector(".backup-record-count");
+const backupLocalStatus = document.querySelector(".backup-local-status");
+const backupMessage = document.querySelector(".backup-message");
+const backupExportButton = document.querySelector(".backup-export");
+const backupImportButton = document.querySelector(".backup-import");
+const backupFileInput = document.querySelector(".backup-file-input");
 const flowOptions = document.querySelectorAll(".flow-option");
 const periodOptions = document.querySelectorAll(".period-option");
 const cycleTitle = document.querySelector(".cycle-title");
@@ -52,10 +58,15 @@ const monthDetailButton = document.querySelector(".month-detail-button");
 const monthDetailBackdrop = document.querySelector(".month-detail-backdrop");
 const monthDetailSheet = document.querySelector(".month-detail-sheet");
 const monthDetailTitle = document.querySelector("#month-detail-title");
+const monthDetailKicker = document.querySelector(".month-detail-kicker");
 const monthDetailClose = document.querySelector(".month-detail-close");
 const monthDetailPrevious = document.querySelector(".month-detail-previous");
 const monthDetailNext = document.querySelector(".month-detail-next");
 const monthDetailCurrent = document.querySelector(".month-detail-current");
+const monthDetailViewOptions = document.querySelectorAll(".month-detail-view-option");
+const monthCalendarView = document.querySelector(".month-calendar-view");
+const monthFlowView = document.querySelector(".month-flow-view");
+const monthFlowList = document.querySelector(".month-flow-list");
 const monthDetailGrid = document.querySelector(".month-detail-grid");
 const monthDetailIncome = document.querySelector(".month-detail-income");
 const monthDetailExpense = document.querySelector(".month-detail-expense");
@@ -73,12 +84,17 @@ const entryProjectHint = document.querySelector(".entry-project-hint");
 const createProjectButton = document.querySelector(".create-project-button");
 const inputLabel = document.querySelector(".input-label");
 const expenseInput = document.querySelector(".expense-input");
+const entryQuantityDecrease = document.querySelector(".entry-quantity-decrease");
+const entryQuantityIncrease = document.querySelector(".entry-quantity-increase");
+const entryQuantityValue = document.querySelector(".entry-quantity-value");
+const entryQuantityHint = document.querySelector(".entry-quantity-hint");
 const formError = document.querySelector(".form-error");
 const quickExamples = document.querySelectorAll(".quick-examples button");
 const confirmCard = document.querySelector(".confirm-card");
 const confirmNote = document.querySelector(".confirm-note");
 const confirmCategory = document.querySelector(".confirm-category");
 const confirmAmount = document.querySelector(".confirm-amount");
+const confirmCalculation = document.querySelector(".confirm-calculation");
 const confirmProject = document.querySelector(".confirm-project");
 const confirmTime = document.querySelector(".confirm-time");
 const editResult = document.querySelector(".edit-result");
@@ -119,10 +135,15 @@ const hasMonthDetail =
   Boolean(monthDetailBackdrop) &&
   Boolean(monthDetailSheet) &&
   Boolean(monthDetailTitle) &&
+  Boolean(monthDetailKicker) &&
   Boolean(monthDetailClose) &&
   Boolean(monthDetailPrevious) &&
   Boolean(monthDetailNext) &&
   Boolean(monthDetailCurrent) &&
+  monthDetailViewOptions.length === 2 &&
+  Boolean(monthCalendarView) &&
+  Boolean(monthFlowView) &&
+  Boolean(monthFlowList) &&
   Boolean(monthDetailGrid) &&
   Boolean(monthDetailIncome) &&
   Boolean(monthDetailExpense) &&
@@ -132,6 +153,7 @@ const storageKey = "bookkeeping-records";
 const currencyStorageKey = "bookkeeping-currency";
 const budgetStorageKey = "bookkeeping-monthly-budgets";
 const projectStorageKey = "bookkeeping-projects";
+const backupVersion = 1;
 const dayNames = ["日", "一", "二", "三", "四", "五", "六"];
 const today = startOfDay(new Date());
 const flowLabels = {
@@ -237,7 +259,7 @@ const incomeCategories = [
 const quickExampleSets = {
   expense: [
     { label: "早餐 12", value: "早餐 12", category: "餐饮" },
-    { label: "打车 25", value: "打车 25", category: "交通" },
+    { label: "地铁 2.9×2", value: "地铁 2.9*2", category: "交通" },
     { label: "日用品 156", value: "超市日用品 156", category: "购物" },
   ],
   income: [
@@ -265,10 +287,12 @@ let selectedFlow = "expense";
 let selectedEntryFlow = "expense";
 let selectedEntryCategory = "";
 let selectedEntryProjectId = "";
+let selectedEntryQuantity = 1;
 let selectedPeriod = "week";
 let selectedCurrency = readSelectedCurrency();
 let activeProjectDetailId = "";
 let monthDetailViewDate = new Date(today.getFullYear(), today.getMonth(), 1);
+let monthDetailMode = "calendar";
 
 function updatePreviewScale() {
   const isPhoneViewport = window.matchMedia("(max-width: 520px)").matches;
@@ -428,6 +452,35 @@ function formatDetailBalanceMoney(amount) {
   return formatDetailMoney(amount, amount > 0 ? "income" : "expense");
 }
 
+function normalizeQuantity(value) {
+  const quantity = Math.floor(Number(value) || 1);
+  return Math.max(1, Math.min(99, quantity));
+}
+
+function getRecordQuantity(record) {
+  return normalizeQuantity(record.quantity);
+}
+
+function getRecordUnitAmount(record) {
+  const unitAmount = Number(record.unitAmount);
+
+  if (Number.isFinite(unitAmount) && unitAmount > 0) {
+    return unitAmount;
+  }
+
+  return (Number(record.amount) || 0) / getRecordQuantity(record);
+}
+
+function getRecordCalculation(record) {
+  const quantity = getRecordQuantity(record);
+
+  if (quantity <= 1) {
+    return "";
+  }
+
+  return `${formatDetailMoney(getRecordUnitAmount(record))} × ${quantity}`;
+}
+
 function parseAmountInput(value) {
   const normalized = String(value || "")
     .replace(/,/g, "")
@@ -545,11 +598,17 @@ function readRecords() {
     const originalInputAmount = Number(record.inputAmount);
     const hasOriginalCurrencyInput =
       Boolean(record.inputCurrency) && Number.isFinite(originalInputAmount) && originalInputAmount > 0;
+    const amount = hasOriginalCurrencyInput ? originalInputAmount : Number(record.amount) || 0;
+    const quantity = normalizeQuantity(record.quantity);
+    const savedUnitAmount = Number(record.unitAmount);
 
     return {
       ...record,
       id: record.id || `${toDateKey(recordDate)}-${record.note}-${record.amount}-${recordTime}`,
-      amount: hasOriginalCurrencyInput ? originalInputAmount : Number(record.amount) || 0,
+      amount,
+      quantity,
+      unitAmount:
+        Number.isFinite(savedUnitAmount) && savedUnitAmount > 0 ? savedUnitAmount : amount / quantity,
       flow: getRecordFlow(record),
       dateKey: record.dateKey || toDateKey(recordDate),
       dateLabel: record.dateLabel || formatDateLabel(recordDate),
@@ -608,15 +667,18 @@ function readMonthlyBudget() {
   return Number.isFinite(budget) && budget > 0 ? budget : 0;
 }
 
-function writeMonthlyBudget(amount) {
-  const budgets = readMonthlyBudgets();
-  budgets[getBudgetMonthKey()] = Math.max(0, amount);
-
+function writeMonthlyBudgets(budgets) {
   try {
     window.localStorage.setItem(budgetStorageKey, JSON.stringify(budgets));
   } catch {
     storageAvailable = false;
   }
+}
+
+function writeMonthlyBudget(amount) {
+  const budgets = readMonthlyBudgets();
+  budgets[getBudgetMonthKey()] = Math.max(0, amount);
+  writeMonthlyBudgets(budgets);
 }
 
 function readProjects() {
@@ -645,6 +707,133 @@ function writeProjects(projects) {
     window.localStorage.setItem(projectStorageKey, JSON.stringify(projects));
   } catch {
     storageAvailable = false;
+  }
+}
+
+function renderBackupCard() {
+  const records = readRecords();
+  const projects = readProjects();
+  const latestTimestamp = records.reduce((latest, record) => {
+    const timestamp = new Date(record.createdAt || 0).getTime();
+    return Number.isFinite(timestamp) ? Math.max(latest, timestamp) : latest;
+  }, 0);
+
+  backupRecordCount.textContent = `${records.length} 笔记录 · ${projects.length} 个项目`;
+  backupLocalStatus.textContent = latestTimestamp
+    ? `最近记账 ${new Date(latestTimestamp).toLocaleString("zh-CN", {
+        month: "numeric",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })}`
+    : "建议每月导出一次备份";
+}
+
+function buildBackupPayload() {
+  return {
+    app: "bookkeeping-app",
+    version: backupVersion,
+    exportedAt: new Date().toISOString(),
+    currency: selectedCurrency,
+    records: readRecords(),
+    projects: readProjects(),
+    monthlyBudgets: readMonthlyBudgets(),
+  };
+}
+
+function exportBackup() {
+  const payload = buildBackupPayload();
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const downloadUrl = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  const now = new Date();
+  const timeKey = `${toDateKey(now)}-${String(now.getHours()).padStart(2, "0")}${String(
+    now.getMinutes(),
+  ).padStart(2, "0")}`;
+
+  link.href = downloadUrl;
+  link.download = `记账备份-${timeKey}.json`;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 0);
+
+  backupMessage.classList.remove("is-error");
+  backupMessage.textContent = `已导出 ${payload.records.length} 笔记录，请保留好这个 JSON 文件`;
+  showToast("账本备份已导出");
+}
+
+function getBackupRecordKey(record, index) {
+  return String(
+    record?.id ||
+      `${record?.dateKey || "unknown"}-${record?.note || "record"}-${record?.amount || 0}-${
+        record?.recordTime || index
+      }`,
+  );
+}
+
+async function importBackup(file) {
+  if (!file) {
+    return;
+  }
+
+  try {
+    if (file.size > 5 * 1024 * 1024) {
+      throw new Error("备份文件过大");
+    }
+
+    const payload = JSON.parse(await file.text());
+
+    if (
+      payload?.app !== "bookkeeping-app" ||
+      !Array.isArray(payload.records) ||
+      !Array.isArray(payload.projects) ||
+      typeof payload.monthlyBudgets !== "object" ||
+      payload.monthlyBudgets === null
+    ) {
+      throw new Error("备份格式不正确");
+    }
+
+    const recordMap = new Map();
+    [...payload.records, ...readRecords()].forEach((record, index) => {
+      recordMap.set(getBackupRecordKey(record, index), record);
+    });
+
+    const projectMap = new Map();
+    [...payload.projects, ...readProjects()].forEach((project) => {
+      if (project?.id) {
+        projectMap.set(String(project.id), project);
+      }
+    });
+
+    writeRecords([...recordMap.values()]);
+    writeProjects([...projectMap.values()]);
+    writeMonthlyBudgets({ ...payload.monthlyBudgets, ...readMonthlyBudgets() });
+
+    if (currencyProfiles[payload.currency]) {
+      selectedCurrency = payload.currency;
+      writeSelectedCurrency(selectedCurrency);
+    }
+
+    renderLedger();
+    renderAssetsView();
+    renderEntryProjectOptions();
+    if (activeTab === "数据") {
+      renderDataView();
+    }
+    if (appScreen.dataset.monthDetailOpen === "true") {
+      renderMonthDetail();
+    }
+
+    backupMessage.classList.remove("is-error");
+    backupMessage.textContent = `恢复完成，当前共 ${readRecords().length} 笔记录`;
+    showToast("备份已恢复，原有记录已保留");
+  } catch (error) {
+    backupMessage.classList.add("is-error");
+    backupMessage.textContent = error instanceof Error ? error.message : "无法读取这个备份文件";
+    showToast("备份恢复失败");
+  } finally {
+    backupFileInput.value = "";
   }
 }
 
@@ -958,7 +1147,9 @@ function renderProjectDetail(projectId = activeProjectDetailId) {
     visual.textContent = getCategoryIcon(record.category);
     main.className = "project-detail-record-main";
     note.textContent = record.note;
-    meta.textContent = `${record.dateLabel} · ${normalizeCategoryName(record.category)}`;
+    meta.textContent = `${record.dateLabel} · ${normalizeCategoryName(record.category)}${
+      getRecordCalculation(record) ? ` · ${getRecordCalculation(record)}` : ""
+    }`;
     amount.textContent = formatDetailMoney(Number(record.amount) || 0, getRecordFlow(record));
     main.append(note, meta);
     row.append(visual, main, amount);
@@ -1275,6 +1466,7 @@ function renderAssetsView() {
   assetNet.textContent = formatAssetMoney(totalIncome - totalExpense);
   assetTotal.textContent = formatAssetMoney(totalIncome);
   assetLiability.textContent = formatAssetMoney(totalExpense);
+  renderBackupCard();
   renderCurrencyControls();
 }
 
@@ -1407,6 +1599,116 @@ function renderReport() {
   `;
 }
 
+function renderMonthDetailMode() {
+  const showingCalendar = monthDetailMode === "calendar";
+
+  monthCalendarView.hidden = !showingCalendar;
+  monthFlowView.hidden = showingCalendar;
+  monthDetailKicker.textContent = showingCalendar ? "日历明细" : "月度流水";
+
+  monthDetailViewOptions.forEach((option) => {
+    const isActive = option.dataset.monthView === monthDetailMode;
+    option.classList.toggle("is-active", isActive);
+    option.setAttribute("aria-selected", String(isActive));
+  });
+}
+
+function setMonthDetailMode(mode) {
+  if (!['calendar', 'flow'].includes(mode)) {
+    return;
+  }
+
+  monthDetailMode = mode;
+  renderMonthDetailMode();
+}
+
+function renderMonthFlow(records) {
+  const sortedRecords = [...records].sort((left, right) => {
+    const dateCompare = String(right.dateKey).localeCompare(String(left.dateKey));
+    return dateCompare || Number(right.id || 0) - Number(left.id || 0);
+  });
+  const groupedRecords = new Map();
+  const fragment = document.createDocumentFragment();
+
+  sortedRecords.forEach((record) => {
+    const dateKey = record.dateKey || toDateKey(getRecordDate(record));
+    const group = groupedRecords.get(dateKey) || [];
+    group.push(record);
+    groupedRecords.set(dateKey, group);
+  });
+
+  if (!sortedRecords.length) {
+    const empty = document.createElement("div");
+    empty.className = "month-flow-empty";
+    empty.innerHTML = "<strong>这个月还没有流水</strong><span>记下第一笔后，会按日期显示在这里</span>";
+    fragment.append(empty);
+  }
+
+  groupedRecords.forEach((dayRecords, dateKey) => {
+    const date = fromDateKey(dateKey);
+    const dayIncome = getFlowTotal(dayRecords, "income");
+    const dayExpense = getFlowTotal(dayRecords, "expense");
+    const section = document.createElement("section");
+    const header = document.createElement("header");
+    const dateLabel = document.createElement("strong");
+    const summary = document.createElement("span");
+    const list = document.createElement("div");
+
+    section.className = "month-flow-day";
+    header.className = "month-flow-day-header";
+    dateLabel.textContent = `${formatMonthDay(date)} · ${formatWeekday(date)}`;
+    summary.textContent = `${dayRecords.length} 笔 · 支出 ${formatDetailMoney(dayExpense)}${
+      dayIncome > 0 ? ` · 收入 ${formatDetailMoney(dayIncome, "income")}` : ""
+    }`;
+    list.className = "month-flow-day-list";
+
+    dayRecords.forEach((record) => {
+      const row = document.createElement("button");
+      const visual = document.createElement("span");
+      const main = document.createElement("span");
+      const note = document.createElement("strong");
+      const meta = document.createElement("small");
+      const amount = document.createElement("b");
+      const metaParts = [normalizeCategoryName(record.category)];
+      const calculation = getRecordCalculation(record);
+
+      if (record.projectName) {
+        metaParts.push(`项目：${record.projectName}`);
+      }
+      if (calculation) {
+        metaParts.push(calculation);
+      }
+      if (record.recordTime) {
+        metaParts.push(record.recordTime);
+      }
+
+      row.className = "month-flow-record";
+      row.type = "button";
+      row.dataset.recordId = String(record.id);
+      row.dataset.flow = getRecordFlow(record);
+      row.setAttribute(
+        "aria-label",
+        `查看并可撤回 ${record.note} ${formatDetailMoney(Number(record.amount) || 0, getRecordFlow(record))}`,
+      );
+      visual.className = "month-flow-record-visual";
+      visual.textContent = getCategoryIcon(record.category);
+      main.className = "month-flow-record-main";
+      note.textContent = record.note;
+      meta.textContent = metaParts.join(" · ");
+      amount.textContent = formatDetailMoney(Number(record.amount) || 0, getRecordFlow(record));
+      main.append(note, meta);
+      row.append(visual, main, amount);
+      list.append(row);
+    });
+
+    header.append(dateLabel, summary);
+    section.append(header, list);
+    fragment.append(section);
+  });
+
+  monthFlowList.replaceChildren(fragment);
+}
+
 function renderMonthDetail() {
   if (!hasMonthDetail) {
     return;
@@ -1428,6 +1730,8 @@ function renderMonthDetail() {
   monthDetailExpense.textContent = formatDetailMoney(expenseTotal);
   monthDetailBalance.textContent = formatDetailBalanceMoney(balanceTotal);
   monthDetailBalance.classList.toggle("is-negative", balanceTotal < 0);
+  renderMonthDetailMode();
+  renderMonthFlow(records);
 
   for (let index = 0; index < monthStart.getDay(); index += 1) {
     const placeholder = document.createElement("span");
@@ -1512,6 +1816,7 @@ function openMonthDetail() {
 
   const selectedDate = getSelectedDate();
   monthDetailViewDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
+  monthDetailMode = "calendar";
   renderMonthDetail();
   monthDetailSheet.hidden = false;
 
@@ -1602,7 +1907,7 @@ function syncEntryDateContext() {
     state === "past"
       ? `${formatMonthDay(selectedDate)}漏记了什么？（${currencyText}）`
       : `${dateText}买了什么？（${currencyText}）`;
-  expenseInput.placeholder = "海底捞 422";
+  expenseInput.placeholder = "地铁 2.9*2";
 }
 
 function getFallbackCategory(flow = selectedEntryFlow) {
@@ -1674,6 +1979,22 @@ function setEntryCategory(categoryName) {
   renderEntryCategoryCards();
 }
 
+function renderEntryQuantity() {
+  entryQuantityValue.textContent = `×${selectedEntryQuantity}`;
+  entryQuantityDecrease.disabled = selectedEntryQuantity <= 1;
+  entryQuantityIncrease.disabled = selectedEntryQuantity >= 99;
+  entryQuantityHint.textContent =
+    selectedEntryQuantity > 1
+      ? `输入单价，总金额会按 ×${selectedEntryQuantity} 计算`
+      : `也可直接输入：地铁 2.9*2`;
+}
+
+function setEntryQuantity(quantity) {
+  selectedEntryQuantity = normalizeQuantity(quantity);
+  formError.textContent = "";
+  renderEntryQuantity();
+}
+
 function renderEntryFlowOptions() {
   entryFlowOptions.forEach((option) => {
     option.classList.toggle("is-active", option.dataset.entryFlow === selectedEntryFlow);
@@ -1681,6 +2002,7 @@ function renderEntryFlowOptions() {
   appScreen.dataset.entryFlow = selectedEntryFlow;
   renderEntryCategoryCards();
   renderEntryProjectOptions();
+  renderEntryQuantity();
   renderQuickExamples();
   syncEntryDateContext();
 }
@@ -1821,6 +2143,7 @@ function selectDate(dateKey, shouldToast = true) {
 function openSheet() {
   selectedEntryFlow = "expense";
   selectedEntryCategory = "";
+  selectedEntryQuantity = 1;
   const activeProjects = getProjectsForDate(selectedDateKey);
   selectedEntryProjectId = activeProjects.length === 1 ? activeProjects[0].id : "";
   renderEntryFlowOptions();
@@ -1843,12 +2166,14 @@ function closeSheet() {
 function resetEntry() {
   parsedExpense = null;
   selectedEntryCategory = "";
+  selectedEntryQuantity = 1;
   entryForm.hidden = false;
   confirmCard.hidden = true;
   formError.textContent = "";
   expenseInput.value = "";
   renderEntryCategoryCards();
   renderEntryProjectOptions();
+  renderEntryQuantity();
 }
 
 function normalizeRecordText(value) {
@@ -1897,19 +2222,31 @@ function classifyRecord(note, flow = selectedEntryFlow) {
 
 function parseExpense(rawValue) {
   const value = rawValue.trim().replace(/[，。]/g, " ");
-  const amountMatch = value.match(/(\d+(?:\.\d{1,2})?)/);
+  const multiplierMatch = value.match(/(\d+(?:\.\d{1,2})?)\s*[*xX×]\s*(\d{1,2})/);
+  const amountMatch = multiplierMatch || value.match(/(\d+(?:\.\d{1,2})?)/);
 
   if (!amountMatch) {
     return null;
   }
 
-  const inputAmount = Number(amountMatch[1]);
+  const unitAmount = Number(amountMatch[1]);
+  const explicitQuantity = multiplierMatch ? Number(multiplierMatch[2]) : null;
+  const quantity = multiplierMatch ? explicitQuantity : selectedEntryQuantity;
+  const inputAmount = unitAmount * quantity;
   const note = value
     .replace(amountMatch[0], "")
-    .replace(/[￥¥元块]/g, "")
+    .replace(/(?:HK|A|C|S)?[$￥¥€£₩]|元|块/gi, "")
     .trim();
 
-  if (!note || !Number.isFinite(inputAmount) || inputAmount <= 0) {
+  if (
+    !note ||
+    !Number.isFinite(unitAmount) ||
+    unitAmount <= 0 ||
+    !Number.isInteger(quantity) ||
+    quantity < 1 ||
+    quantity > 99 ||
+    !Number.isFinite(inputAmount)
+  ) {
     return null;
   }
 
@@ -1922,6 +2259,8 @@ function parseExpense(rawValue) {
     amount: toBaseCurrency(inputAmount),
     inputAmount,
     inputCurrency: selectedCurrency,
+    unitAmount: toBaseCurrency(unitAmount),
+    quantity,
     category: selectedCategory ? formatCategoryLabel(selectedCategory) : classifyRecord(note),
     flow: selectedEntryFlow,
     dateKey: selectedDateKey,
@@ -1938,6 +2277,10 @@ function renderConfirm(expense) {
   confirmCategory.textContent = expense.category;
   confirmProject.textContent = expense.projectName || "不计入项目";
   confirmAmount.textContent = formatDetailMoney(expense.amount, expense.flow);
+  confirmCalculation.textContent =
+    expense.quantity > 1
+      ? `${formatDetailMoney(expense.unitAmount)} × ${expense.quantity} = ${formatDetailMoney(expense.amount)}`
+      : "1 份";
   confirmTime.textContent = expense.time;
   entryForm.hidden = true;
   confirmCard.hidden = false;
@@ -2032,11 +2375,20 @@ function renderLedger() {
     const time = document.createElement("span");
     time.textContent = `${record.dateLabel} ${record.recordTime}`;
 
+    const calculationText = getRecordCalculation(record);
+    const calculation = document.createElement("span");
+    calculation.className = "ledger-quantity";
+    calculation.textContent = calculationText;
+
     const amount = document.createElement("div");
     amount.className = "ledger-amount";
     amount.textContent = formatDetailMoney(Number(record.amount) || 0, getRecordFlow(record));
 
-    meta.append(category, time);
+    meta.append(category);
+    if (calculationText) {
+      meta.append(calculation);
+    }
+    meta.append(time);
     main.append(note, meta);
     item.append(visual, main, amount);
     fragment.append(item);
@@ -2055,7 +2407,9 @@ function openWithdrawDialog(recordId) {
   pendingWithdrawId = String(recordId);
   pendingProjectWithdrawId = null;
   withdrawTitle.textContent = "撤回这笔记账？";
-  withdrawSummary.textContent = `${targetRecord.note} · ${formatDetailMoney(Number(targetRecord.amount) || 0, getRecordFlow(targetRecord))}`;
+  withdrawSummary.textContent = `${targetRecord.note}${
+    getRecordCalculation(targetRecord) ? ` · ${getRecordCalculation(targetRecord)}` : ""
+  } · ${formatDetailMoney(Number(targetRecord.amount) || 0, getRecordFlow(targetRecord))}`;
   withdrawConfirm.textContent = "是";
   withdrawDialog.hidden = false;
 
@@ -2416,6 +2770,9 @@ if (hasMonthDetail) {
   monthDetailPrevious.addEventListener("click", () => shiftMonthDetail(-1));
   monthDetailNext.addEventListener("click", () => shiftMonthDetail(1));
   monthDetailCurrent.addEventListener("click", resetMonthDetailToCurrent);
+  monthDetailViewOptions.forEach((option) => {
+    option.addEventListener("click", () => setMonthDetailMode(option.dataset.monthView));
+  });
   monthDetailGrid.addEventListener("click", (event) => {
     const day = event.target.closest(".month-day");
 
@@ -2425,6 +2782,13 @@ if (hasMonthDetail) {
 
     selectDate(day.dataset.dateKey);
     closeMonthDetail();
+  });
+  monthFlowList.addEventListener("click", (event) => {
+    const record = event.target.closest(".month-flow-record");
+
+    if (record) {
+      openWithdrawDialog(record.dataset.recordId);
+    }
   });
 }
 
@@ -2443,6 +2807,9 @@ currencyOptions.forEach((option) => {
   option.addEventListener("click", () => selectCurrency(option.dataset.currency));
 });
 budgetButton.addEventListener("click", updateMonthlyBudget);
+backupExportButton.addEventListener("click", exportBackup);
+backupImportButton.addEventListener("click", () => backupFileInput.click());
+backupFileInput.addEventListener("change", () => importBackup(backupFileInput.files?.[0]));
 
 flowOptions.forEach((option) => {
   option.addEventListener("click", () => {
@@ -2481,6 +2848,16 @@ entryCategoryGrid.addEventListener("click", (event) => {
   expenseInput.focus();
 });
 
+entryQuantityDecrease.addEventListener("click", () => {
+  setEntryQuantity(selectedEntryQuantity - 1);
+  expenseInput.focus();
+});
+
+entryQuantityIncrease.addEventListener("click", () => {
+  setEntryQuantity(selectedEntryQuantity + 1);
+  expenseInput.focus();
+});
+
 entryProjectOptions.addEventListener("click", (event) => {
   const option = event.target.closest(".entry-project-option");
 
@@ -2512,7 +2889,7 @@ entryForm.addEventListener("submit", (event) => {
 
   const expense = parseExpense(expenseInput.value);
   if (!expense) {
-    formError.textContent = "请按“事项 + 金额”输入，例如：海底捞 422";
+    formError.textContent = "请输入“事项 + 单价”，例如：地铁 2.9*2";
     expenseInput.focus();
     return;
   }
