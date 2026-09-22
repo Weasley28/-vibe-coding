@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>智能记账 App - 首页原型</title>
-    <link rel="stylesheet" href="./styles.css?v=data-backup" />
+    <link rel="stylesheet" href="./styles.css?v=no-spend-pending-contrast" />
   </head>
   <body>
     <main class="preview-stage">
@@ -22,6 +22,7 @@
             data-active-tab="明细"
             data-sheet-open="false"
             data-withdraw-open="false"
+            data-pending-amount-open="false"
             data-report-open="false"
             data-month-detail-open="false"
             data-project-status="false"
@@ -418,6 +419,14 @@
                   />
                   <button class="parse-button" type="submit">确定</button>
                 </div>
+                <button class="entry-pending-toggle" type="button" aria-pressed="false">
+                  <span class="entry-pending-icon" aria-hidden="true">?</span>
+                  <span>
+                    <strong>金额稍后确认</strong>
+                    <small>先记下这件事，拿到账单后再补金额</small>
+                  </span>
+                  <span class="entry-pending-check" aria-hidden="true">✓</span>
+                </button>
                 <div class="entry-quantity-row">
                   <div>
                     <strong>份数</strong>
@@ -574,6 +583,39 @@
               </div>
             </section>
 
+            <div class="pending-amount-backdrop" aria-hidden="true"></div>
+
+            <section
+              class="pending-amount-dialog"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="pending-amount-title"
+              hidden
+            >
+              <p class="pending-amount-kicker">待确认账单</p>
+              <h2 id="pending-amount-title">补充金额</h2>
+              <p class="pending-amount-summary"></p>
+              <label class="pending-amount-label" for="pending-amount-input">
+                最终金额
+                <span class="pending-amount-currency"></span>
+              </label>
+              <input
+                id="pending-amount-input"
+                class="pending-amount-input"
+                type="number"
+                min="0.01"
+                step="0.01"
+                inputmode="decimal"
+                placeholder="0.00"
+              />
+              <p class="pending-amount-error" role="alert"></p>
+              <div class="pending-amount-actions">
+                <button class="pending-amount-cancel" type="button">以后再补</button>
+                <button class="pending-amount-save" type="button">确认金额</button>
+              </div>
+              <button class="pending-amount-remove" type="button">撤回这笔待确认账单</button>
+            </section>
+
             <div class="withdraw-backdrop" aria-hidden="true"></div>
 
             <section
@@ -681,6 +723,6 @@
       </section>
     </main>
 
-    <script src="./app.js?v=data-backup"></script>
+    <script src="./app.js?v=no-spend-pending"></script>
   </body>
 </html>

@@ -84,6 +84,8 @@ const entryProjectHint = document.querySelector(".entry-project-hint");
 const createProjectButton = document.querySelector(".create-project-button");
 const inputLabel = document.querySelector(".input-label");
 const expenseInput = document.querySelector(".expense-input");
+const entryPendingToggle = document.querySelector(".entry-pending-toggle");
+const parseButton = document.querySelector(".parse-button");
 const entryQuantityDecrease = document.querySelector(".entry-quantity-decrease");
 const entryQuantityIncrease = document.querySelector(".entry-quantity-increase");
 const entryQuantityValue = document.querySelector(".entry-quantity-value");
@@ -105,6 +107,16 @@ const withdrawTitle = document.querySelector("#withdraw-title");
 const withdrawSummary = document.querySelector(".withdraw-summary");
 const withdrawCancel = document.querySelector(".withdraw-cancel");
 const withdrawConfirm = document.querySelector(".withdraw-confirm");
+const pendingAmountBackdrop = document.querySelector(".pending-amount-backdrop");
+const pendingAmountDialog = document.querySelector(".pending-amount-dialog");
+const pendingAmountTitle = document.querySelector("#pending-amount-title");
+const pendingAmountSummary = document.querySelector(".pending-amount-summary");
+const pendingAmountCurrency = document.querySelector(".pending-amount-currency");
+const pendingAmountInput = document.querySelector(".pending-amount-input");
+const pendingAmountError = document.querySelector(".pending-amount-error");
+const pendingAmountCancel = document.querySelector(".pending-amount-cancel");
+const pendingAmountSave = document.querySelector(".pending-amount-save");
+const pendingAmountRemove = document.querySelector(".pending-amount-remove");
 const projectStatusSpace = document.querySelector(".project-status-space");
 const projectStatusList = document.querySelector(".project-status-list");
 const projectEditorBackdrop = document.querySelector(".project-editor-backdrop");
@@ -153,7 +165,8 @@ const storageKey = "bookkeeping-records";
 const currencyStorageKey = "bookkeeping-currency";
 const budgetStorageKey = "bookkeeping-monthly-budgets";
 const projectStorageKey = "bookkeeping-projects";
-const backupVersion = 1;
+const noSpendStorageKey = "bookkeeping-no-spend-days";
+const backupVersion = 2;
 const dayNames = ["日", "一", "二", "三", "四", "五", "六"];
 const today = startOfDay(new Date());
 const flowLabels = {
@@ -288,6 +301,8 @@ let selectedEntryFlow = "expense";
 let selectedEntryCategory = "";
 let selectedEntryProjectId = "";
 let selectedEntryQuantity = 1;
+let isPendingEntry = false;
+let activePendingRecordId = null;
 let selectedPeriod = "week";
 let selectedCurrency = readSelectedCurrency();
 let activeProjectDetailId = "";
@@ -609,6 +624,7 @@ function readRecords() {
       quantity,
       unitAmount:
         Number.isFinite(savedUnitAmount) && savedUnitAmount > 0 ? savedUnitAmount : amount / quantity,
+      isPendingAmount: Boolean(record.isPendingAmount),
       flow: getRecordFlow(record),
       dateKey: record.dateKey || toDateKey(recordDate),
       dateLabel: record.dateLabel || formatDateLabel(recordDate),
@@ -710,6 +726,69 @@ function writeProjects(projects) {
   }
 }
 
+function readNoSpendDays() {
+  try {
+    const days = JSON.parse(window.localStorage.getItem(noSpendStorageKey) || "[]");
+    if (!Array.isArray(days)) {
+      return [];
+    }
+
+    return [...new Set(days.filter((dateKey) => /^\d{4}-\d{2}-\d{2}$/.test(String(dateKey))))].sort();
+  } catch {
+    return [];
+  }
+}
+
+function writeNoSpendDays(days) {
+  try {
+    const normalizedDays = [...new Set(days.map(String))].sort();
+    window.localStorage.setItem(noSpendStorageKey, JSON.stringify(normalizedDays));
+  } catch {
+    storageAvailable = false;
+  }
+}
+
+function isNoSpendDay(dateKey) {
+  return readNoSpendDays().includes(dateKey);
+}
+
+function setNoSpendDay(dateKey, shouldMark) {
+  const days = new Set(readNoSpendDays());
+
+  if (shouldMark) {
+    days.add(dateKey);
+  } else {
+    days.delete(dateKey);
+  }
+
+  writeNoSpendDays([...days]);
+}
+
+function toggleSelectedNoSpendDay() {
+  const selectedRecords = getSelectedDateRecords();
+  const isMarked = isNoSpendDay(selectedDateKey);
+  const hasExpenseRecord = selectedRecords.some((record) => getRecordFlow(record) === "expense");
+
+  if (!isMarked && hasExpenseRecord) {
+    showToast("当天已有支出，不能标记无消费");
+    return;
+  }
+
+  if (!isMarked && getSelectedDateState() === "future") {
+    showToast("未来日期还不能确认无消费");
+    return;
+  }
+
+  setNoSpendDay(selectedDateKey, !isMarked);
+  buildDateStrip(getSelectedDate());
+  updateSelectedDateContext();
+  renderLedger();
+  if (appScreen.dataset.monthDetailOpen === "true") {
+    renderMonthDetail();
+  }
+  showToast(isMarked ? "已撤销无消费标记" : "已记录这天无消费");
+}
+
 function renderBackupCard() {
   const records = readRecords();
   const projects = readProjects();
@@ -738,6 +817,7 @@ function buildBackupPayload() {
     records: readRecords(),
     projects: readProjects(),
     monthlyBudgets: readMonthlyBudgets(),
+    noSpendDays: readNoSpendDays(),
   };
 }
 
@@ -809,12 +889,15 @@ async function importBackup(file) {
     writeRecords([...recordMap.values()]);
     writeProjects([...projectMap.values()]);
     writeMonthlyBudgets({ ...payload.monthlyBudgets, ...readMonthlyBudgets() });
+    writeNoSpendDays([...(Array.isArray(payload.noSpendDays) ? payload.noSpendDays : []), ...readNoSpendDays()]);
 
     if (currencyProfiles[payload.currency]) {
       selectedCurrency = payload.currency;
       writeSelectedCurrency(selectedCurrency);
     }
 
+    buildDateStrip(getSelectedDate());
+    updateSelectedDateContext();
     renderLedger();
     renderAssetsView();
     renderEntryProjectOptions();
@@ -1136,21 +1219,28 @@ function renderProjectDetail(projectId = activeProjectDetailId) {
     const amount = document.createElement("b");
 
     row.className = "project-detail-record";
+    row.classList.toggle("is-pending", record.isPendingAmount);
     row.type = "button";
     row.dataset.recordId = String(record.id);
     row.dataset.flow = getRecordFlow(record);
     row.setAttribute(
       "aria-label",
-      `打开撤回确认 ${record.note} ${formatDetailMoney(Number(record.amount) || 0, getRecordFlow(record))}`,
+      record.isPendingAmount
+        ? `补充金额 ${record.note}`
+        : `打开撤回确认 ${record.note} ${formatDetailMoney(Number(record.amount) || 0, getRecordFlow(record))}`,
     );
     visual.className = "project-detail-record-visual";
     visual.textContent = getCategoryIcon(record.category);
     main.className = "project-detail-record-main";
     note.textContent = record.note;
     meta.textContent = `${record.dateLabel} · ${normalizeCategoryName(record.category)}${
+      record.isPendingAmount ? " · 金额待确认" : ""
+    }${
       getRecordCalculation(record) ? ` · ${getRecordCalculation(record)}` : ""
     }`;
-    amount.textContent = formatDetailMoney(Number(record.amount) || 0, getRecordFlow(record));
+    amount.textContent = record.isPendingAmount
+      ? "待补"
+      : formatDetailMoney(Number(record.amount) || 0, getRecordFlow(record));
     main.append(note, meta);
     row.append(visual, main, amount);
     fragment.append(row);
@@ -1216,6 +1306,9 @@ function buildMonthlyCalendar(date = getSelectedDate()) {
   const monthEnd = new Date(year, month + 1, 0);
   const records = getRecordsInMonth(date);
   const dailyTotals = new Map();
+  const noSpendDays = new Set(
+    readNoSpendDays().filter((dateKey) => isSameMonth(fromDateKey(dateKey), year, month)),
+  );
 
   records.forEach((record) => {
     const dateKey = toDateKey(getRecordDate(record));
@@ -1236,6 +1329,7 @@ function buildMonthlyCalendar(date = getSelectedDate()) {
     dailyTotals,
     monthEnd,
     monthStart,
+    noSpendDays,
     records,
   };
 }
@@ -1678,24 +1772,32 @@ function renderMonthFlow(records) {
       if (calculation) {
         metaParts.push(calculation);
       }
+      if (record.isPendingAmount) {
+        metaParts.push("金额待确认");
+      }
       if (record.recordTime) {
         metaParts.push(record.recordTime);
       }
 
       row.className = "month-flow-record";
+      row.classList.toggle("is-pending", record.isPendingAmount);
       row.type = "button";
       row.dataset.recordId = String(record.id);
       row.dataset.flow = getRecordFlow(record);
       row.setAttribute(
         "aria-label",
-        `查看并可撤回 ${record.note} ${formatDetailMoney(Number(record.amount) || 0, getRecordFlow(record))}`,
+        record.isPendingAmount
+          ? `补充金额 ${record.note}`
+          : `查看并可撤回 ${record.note} ${formatDetailMoney(Number(record.amount) || 0, getRecordFlow(record))}`,
       );
       visual.className = "month-flow-record-visual";
       visual.textContent = getCategoryIcon(record.category);
       main.className = "month-flow-record-main";
       note.textContent = record.note;
       meta.textContent = metaParts.join(" · ");
-      amount.textContent = formatDetailMoney(Number(record.amount) || 0, getRecordFlow(record));
+      amount.textContent = record.isPendingAmount
+        ? "待补金额"
+        : formatDetailMoney(Number(record.amount) || 0, getRecordFlow(record));
       main.append(note, meta);
       row.append(visual, main, amount);
       list.append(row);
@@ -1715,7 +1817,7 @@ function renderMonthDetail() {
   }
 
   const viewDate = monthDetailViewDate;
-  const { dailyTotals, monthEnd, monthStart, records } = buildMonthlyCalendar(viewDate);
+  const { dailyTotals, monthEnd, monthStart, noSpendDays, records } = buildMonthlyCalendar(viewDate);
   const incomeTotal = getFlowTotal(records, "income");
   const expenseTotal = getFlowTotal(records, "expense");
   const balanceTotal = incomeTotal - expenseTotal;
@@ -1748,6 +1850,7 @@ function renderMonthDetail() {
     const hasIncome = totals.income > 0;
     const hasExpense = totals.expense > 0;
     const hasRecords = totals.count > 0;
+    const isNoSpend = noSpendDays.has(dateKey) && !hasExpense;
 
     dayButton.className = "month-day";
     dayButton.type = "button";
@@ -1755,9 +1858,12 @@ function renderMonthDetail() {
     dayButton.classList.toggle("is-selected", dateKey === selectedDateKey);
     dayButton.classList.toggle("is-today", dateKey === toDateKey(today));
     dayButton.classList.toggle("has-records", hasRecords);
+    dayButton.classList.toggle("is-no-spend", isNoSpend);
     dayButton.setAttribute(
       "aria-label",
-      `${formatMonthDay(date)} 收入${formatDetailMoney(totals.income, "income")} 支出${formatDetailMoney(totals.expense)}`,
+      isNoSpend
+        ? `${formatMonthDay(date)} 已记录无消费`
+        : `${formatMonthDay(date)} 收入${formatDetailMoney(totals.income, "income")} 支出${formatDetailMoney(totals.expense)}`,
     );
 
     const number = document.createElement("span");
@@ -1781,7 +1887,12 @@ function renderMonthDetail() {
       amounts.append(expense);
     }
 
-    if (!hasRecords) {
+    if (isNoSpend) {
+      const noSpend = document.createElement("span");
+      noSpend.className = "month-day-no-spend";
+      noSpend.textContent = "无消费";
+      amounts.append(noSpend);
+    } else if (!hasRecords) {
       const empty = document.createElement("span");
       empty.className = "month-day-empty";
       empty.textContent = "·";
@@ -1855,6 +1966,10 @@ function getSelectedDateState() {
 function getSelectedDateModeText() {
   const state = getSelectedDateState();
 
+  if (isNoSpendDay(selectedDateKey)) {
+    return "已记无消费";
+  }
+
   if (state === "today") {
     return "可记账";
   }
@@ -1881,12 +1996,39 @@ function updateSelectedDateContext() {
   }
 }
 
+function renderPendingEntryMode() {
+  entryForm.classList.toggle("is-pending-entry", isPendingEntry);
+  entryPendingToggle.classList.toggle("is-active", isPendingEntry);
+  entryPendingToggle.setAttribute("aria-pressed", String(isPendingEntry));
+  parseButton.textContent = isPendingEntry ? "先记下" : "确定";
+  syncEntryDateContext();
+}
+
+function setPendingEntryMode(isPending) {
+  isPendingEntry = Boolean(isPending);
+  formError.textContent = "";
+  if (isPendingEntry) {
+    selectedEntryQuantity = 1;
+    renderEntryQuantity();
+  }
+  renderPendingEntryMode();
+  expenseInput.focus();
+}
+
 function syncEntryDateContext() {
   const selectedDate = getSelectedDate();
   const state = getSelectedDateState();
   const dateText = state === "today" ? "今天" : formatEntryDate(selectedDate);
   const flowText = flowLabels[selectedEntryFlow];
   const currencyText = formatCurrencyLabel();
+
+  if (isPendingEntry) {
+    entryTitle.textContent = "先记下待确认账单";
+    entryDateContext.textContent = `这笔${flowText}会先记到 ${dateText}，金额后补`;
+    inputLabel.textContent = `先记下是什么${flowText}（金额稍后确认）`;
+    expenseInput.placeholder = selectedEntryFlow === "income" ? "例如：报销款" : "例如：朋友A的晚餐";
+    return;
+  }
 
   entryTitle.textContent = state === "past" ? `补记${flowText}` : `快速记${flowText}`;
   entryDateContext.textContent =
@@ -2078,6 +2220,7 @@ function buildDateStrip(centerDate = today) {
     button.setAttribute("aria-selected", String(dateKey === selectedDateKey));
     button.setAttribute("aria-label", formatDateLabel(date));
     button.classList.toggle("is-selected", dateKey === selectedDateKey);
+    button.classList.toggle("is-no-spend", isNoSpendDay(dateKey));
 
     const dateNumber = document.createElement("span");
     dateNumber.className = "date-number";
@@ -2144,9 +2287,11 @@ function openSheet() {
   selectedEntryFlow = "expense";
   selectedEntryCategory = "";
   selectedEntryQuantity = 1;
+  isPendingEntry = false;
   const activeProjects = getProjectsForDate(selectedDateKey);
   selectedEntryProjectId = activeProjects.length === 1 ? activeProjects[0].id : "";
   renderEntryFlowOptions();
+  renderPendingEntryMode();
   syncEntryDateContext();
   sheet.hidden = false;
   requestAnimationFrame(() => {
@@ -2167,6 +2312,7 @@ function resetEntry() {
   parsedExpense = null;
   selectedEntryCategory = "";
   selectedEntryQuantity = 1;
+  isPendingEntry = false;
   entryForm.hidden = false;
   confirmCard.hidden = true;
   formError.textContent = "";
@@ -2174,6 +2320,7 @@ function resetEntry() {
   renderEntryCategoryCards();
   renderEntryProjectOptions();
   renderEntryQuantity();
+  renderPendingEntryMode();
 }
 
 function normalizeRecordText(value) {
@@ -2271,6 +2418,35 @@ function parseExpense(rawValue) {
   };
 }
 
+function parsePendingExpense(rawValue) {
+  const note = rawValue.trim().replace(/\s+/g, " ");
+
+  if (!note) {
+    return null;
+  }
+
+  const selectedDate = getSelectedDate();
+  const selectedCategory = getSelectedEntryCategory();
+  const selectedProject = getSelectedEntryProject();
+
+  return {
+    note,
+    amount: 0,
+    inputAmount: 0,
+    inputCurrency: selectedCurrency,
+    unitAmount: 0,
+    quantity: 1,
+    category: selectedCategory ? formatCategoryLabel(selectedCategory) : classifyRecord(note),
+    flow: selectedEntryFlow,
+    dateKey: selectedDateKey,
+    dateLabel: formatDateLabel(selectedDate),
+    time: formatDateLabel(selectedDate),
+    projectId: selectedProject?.id || "",
+    projectName: selectedProject?.name || "",
+    isPendingAmount: true,
+  };
+}
+
 function renderConfirm(expense) {
   parsedExpense = expense;
   confirmNote.textContent = expense.note;
@@ -2306,17 +2482,63 @@ function renderLedger() {
   renderDailyTotals(selectedRecords);
   renderProjectStatus();
 
+  if (selectedRecords.length && isNoSpendDay(selectedDateKey)) {
+    const noSpendStatus = document.createElement("div");
+    noSpendStatus.className = "ledger-no-spend-status";
+
+    const statusText = document.createElement("span");
+    statusText.textContent = "✓ 当天无消费";
+
+    const undoButton = document.createElement("button");
+    undoButton.type = "button";
+    undoButton.textContent = "撤销";
+    undoButton.addEventListener("click", toggleSelectedNoSpendDay);
+
+    noSpendStatus.append(statusText, undoButton);
+    fragment.append(noSpendStatus);
+  }
+
   if (!selectedRecords.length) {
+    const isMarkedNoSpend = isNoSpendDay(selectedDateKey);
     const empty = document.createElement("div");
     empty.className = "ledger-empty";
+    empty.classList.toggle("is-no-spend", isMarkedNoSpend);
+
+    if (isMarkedNoSpend) {
+      const icon = document.createElement("span");
+      icon.className = "ledger-no-spend-icon";
+      icon.textContent = "✓";
+      icon.setAttribute("aria-hidden", "true");
+      empty.append(icon);
+    }
 
     const date = document.createElement("span");
-    date.textContent = getSelectedDateState() === "today" ? "今天暂无明细" : `${formatEntryDate(getSelectedDate())} 暂无明细`;
+    date.textContent = isMarkedNoSpend
+      ? getSelectedDateState() === "today"
+        ? "今天已确认无消费"
+        : `${formatEntryDate(getSelectedDate())} 已确认无消费`
+      : getSelectedDateState() === "today"
+        ? "今天暂无明细"
+        : `${formatEntryDate(getSelectedDate())} 暂无明细`;
 
     const hint = document.createElement("strong");
-    hint.textContent = getSelectedDateState() === "past" ? "点下方补记一笔" : "点下方记一笔";
+    hint.textContent = isMarkedNoSpend
+      ? "这天的账已经对上了"
+      : getSelectedDateState() === "past"
+        ? "点下方补记一笔"
+        : "点下方记一笔";
 
     empty.append(date, hint);
+
+    if (getSelectedDateState() !== "future") {
+      const noSpendButton = document.createElement("button");
+      noSpendButton.className = "ledger-no-spend-button";
+      noSpendButton.type = "button";
+      noSpendButton.textContent = isMarkedNoSpend ? "撤销无消费标记" : "确认这天无消费";
+      noSpendButton.addEventListener("click", toggleSelectedNoSpendDay);
+      empty.append(noSpendButton);
+    }
+
     fragment.append(empty);
   }
 
@@ -2326,13 +2548,20 @@ function renderLedger() {
     item.type = "button";
     item.dataset.recordId = String(record.id);
     item.dataset.flow = getRecordFlow(record);
+    item.classList.toggle("is-pending", record.isPendingAmount);
     item.setAttribute(
       "aria-label",
-      `打开撤回确认 ${record.note} ${formatDetailMoney(Number(record.amount) || 0, getRecordFlow(record))}`,
+      record.isPendingAmount
+        ? `补充金额 ${record.note}`
+        : `打开撤回确认 ${record.note} ${formatDetailMoney(Number(record.amount) || 0, getRecordFlow(record))}`,
     );
     item.addEventListener("click", (event) => {
       event.stopPropagation();
-      openWithdrawDialog(record.id);
+      if (record.isPendingAmount) {
+        openPendingAmountDialog(record.id);
+      } else {
+        openWithdrawDialog(record.id);
+      }
     });
 
     const visual = document.createElement("span");
@@ -2361,6 +2590,13 @@ function renderLedger() {
       meta.append(backfillBadge);
     }
 
+    if (record.isPendingAmount) {
+      const pendingBadge = document.createElement("span");
+      pendingBadge.className = "ledger-pending";
+      pendingBadge.textContent = "金额待确认";
+      meta.append(pendingBadge);
+    }
+
     if (record.projectName || record.projectId) {
       const projectBadge = document.createElement("span");
       const linkedProject = getProjectById(record.projectId);
@@ -2375,14 +2611,16 @@ function renderLedger() {
     const time = document.createElement("span");
     time.textContent = `${record.dateLabel} ${record.recordTime}`;
 
-    const calculationText = getRecordCalculation(record);
+    const calculationText = record.isPendingAmount ? "" : getRecordCalculation(record);
     const calculation = document.createElement("span");
     calculation.className = "ledger-quantity";
     calculation.textContent = calculationText;
 
     const amount = document.createElement("div");
     amount.className = "ledger-amount";
-    amount.textContent = formatDetailMoney(Number(record.amount) || 0, getRecordFlow(record));
+    amount.textContent = record.isPendingAmount
+      ? "点此补金额"
+      : formatDetailMoney(Number(record.amount) || 0, getRecordFlow(record));
 
     meta.append(category);
     if (calculationText) {
@@ -2395,6 +2633,114 @@ function renderLedger() {
   });
 
   ledgerList.replaceChildren(fragment);
+}
+
+function openRecordAction(recordId) {
+  const targetRecord = readRecords().find((record) => String(record.id) === String(recordId));
+
+  if (!targetRecord) {
+    return;
+  }
+
+  if (targetRecord.isPendingAmount) {
+    openPendingAmountDialog(recordId);
+    return;
+  }
+
+  openWithdrawDialog(recordId);
+}
+
+function openPendingAmountDialog(recordId) {
+  const targetRecord = readRecords().find((record) => String(record.id) === String(recordId));
+
+  if (!targetRecord?.isPendingAmount) {
+    return;
+  }
+
+  activePendingRecordId = String(recordId);
+  pendingAmountTitle.textContent = targetRecord.note;
+  pendingAmountSummary.textContent = `${targetRecord.dateLabel} · ${targetRecord.category}${
+    targetRecord.projectName ? ` · ${targetRecord.projectName}` : ""
+  }`;
+  pendingAmountCurrency.textContent = formatCurrencyLabel(targetRecord.inputCurrency || selectedCurrency);
+  pendingAmountInput.value = "";
+  pendingAmountError.textContent = "";
+  pendingAmountDialog.hidden = false;
+
+  requestAnimationFrame(() => {
+    appScreen.dataset.pendingAmountOpen = "true";
+    pendingAmountInput.focus();
+  });
+}
+
+function closePendingAmountDialog() {
+  appScreen.dataset.pendingAmountOpen = "false";
+
+  window.setTimeout(() => {
+    pendingAmountDialog.hidden = true;
+    pendingAmountInput.value = "";
+    pendingAmountError.textContent = "";
+    activePendingRecordId = null;
+  }, 180);
+}
+
+function confirmPendingAmount() {
+  const inputAmount = Number(pendingAmountInput.value);
+
+  if (!Number.isFinite(inputAmount) || inputAmount <= 0) {
+    pendingAmountError.textContent = "请输入大于 0 的最终金额";
+    pendingAmountInput.focus();
+    return;
+  }
+
+  const records = readRecords();
+  const targetIndex = records.findIndex(
+    (record) => String(record.id) === String(activePendingRecordId),
+  );
+
+  if (targetIndex < 0) {
+    closePendingAmountDialog();
+    return;
+  }
+
+  const targetRecord = records[targetIndex];
+  const amount = toBaseCurrency(inputAmount);
+  records[targetIndex] = {
+    ...targetRecord,
+    amount,
+    inputAmount,
+    inputCurrency: targetRecord.inputCurrency || selectedCurrency,
+    unitAmount: amount,
+    quantity: 1,
+    isPendingAmount: false,
+    amountConfirmedAt: new Date().toISOString(),
+  };
+
+  writeRecords(records);
+  closePendingAmountDialog();
+  renderLedger();
+  if (activeTab === "数据") {
+    renderDataView();
+  }
+  if (activeTab === "资产") {
+    renderAssetsView();
+  }
+  if (appScreen.dataset.monthDetailOpen === "true") {
+    renderMonthDetail();
+  }
+  if (appScreen.dataset.projectDetailOpen === "true") {
+    renderProjectDetail();
+  }
+  showToast(`已补充 ${targetRecord.note} ${formatDetailMoney(amount, getRecordFlow(targetRecord))}`);
+}
+
+function removePendingRecord() {
+  const recordId = activePendingRecordId;
+  closePendingAmountDialog();
+
+  if (recordId) {
+    withdrawRecord(recordId);
+  }
 }
 
 function openWithdrawDialog(recordId) {
@@ -2518,7 +2864,11 @@ function withdrawRecord(recordId) {
   if (appScreen.dataset.projectDetailOpen === "true") {
     renderProjectDetail();
   }
-  showToast(`已撤回 ${formatDetailMoney(Number(targetRecord.amount) || 0, getRecordFlow(targetRecord))}`);
+  showToast(
+    targetRecord.isPendingAmount
+      ? `已撤回待确认账单“${targetRecord.note}”`
+      : `已撤回 ${formatDetailMoney(Number(targetRecord.amount) || 0, getRecordFlow(targetRecord))}`,
+  );
 }
 
 function withdrawProject(projectId) {
@@ -2571,6 +2921,11 @@ function saveExpense() {
   };
 
   writeRecords([savedExpense, ...readRecords()]);
+  if (savedExpense.flow === "expense" && isNoSpendDay(savedExpense.dateKey)) {
+    setNoSpendDay(savedExpense.dateKey, false);
+    buildDateStrip(getSelectedDate());
+    updateSelectedDateContext();
+  }
   renderLedger();
   if (activeTab === "数据") {
     renderDataView();
@@ -2582,6 +2937,10 @@ function saveExpense() {
     renderMonthDetail();
   }
   closeSheet();
+  if (savedExpense.isPendingAmount) {
+    showToast(`已记下“${savedExpense.note}”，等账单后再补金额`);
+    return;
+  }
   const toastPrefix = savedExpense.isBackfilled ? "已补记" : "已记账";
   showToast(`${toastPrefix}${flowLabels[savedExpense.flow]} ${savedExpense.dateLabel} ${formatDetailMoney(savedExpense.amount, savedExpense.flow)}`);
 }
@@ -2709,7 +3068,7 @@ ledgerList.addEventListener("click", (event) => {
     return;
   }
 
-  openWithdrawDialog(ledgerItem.dataset.recordId);
+  openRecordAction(ledgerItem.dataset.recordId);
 });
 
 projectStatusList.addEventListener("click", (event) => {
@@ -2724,7 +3083,7 @@ projectDetailRecords.addEventListener("click", (event) => {
   const record = event.target.closest(".project-detail-record");
 
   if (record) {
-    openWithdrawDialog(record.dataset.recordId);
+    openRecordAction(record.dataset.recordId);
   }
 });
 
@@ -2737,6 +3096,10 @@ projectDetailWithdraw.addEventListener("click", () => {
 recordButton.addEventListener("click", openSheet);
 sheetBackdrop.addEventListener("click", closeSheet);
 sheetClose.addEventListener("click", closeSheet);
+pendingAmountBackdrop.addEventListener("click", closePendingAmountDialog);
+pendingAmountCancel.addEventListener("click", closePendingAmountDialog);
+pendingAmountSave.addEventListener("click", confirmPendingAmount);
+pendingAmountRemove.addEventListener("click", removePendingRecord);
 withdrawBackdrop.addEventListener("click", closeWithdrawDialog);
 withdrawCancel.addEventListener("click", closeWithdrawDialog);
 withdrawConfirm.addEventListener("click", () => {
@@ -2787,7 +3150,7 @@ if (hasMonthDetail) {
     const record = event.target.closest(".month-flow-record");
 
     if (record) {
-      openWithdrawDialog(record.dataset.recordId);
+      openRecordAction(record.dataset.recordId);
     }
   });
 }
@@ -2858,6 +3221,10 @@ entryQuantityIncrease.addEventListener("click", () => {
   expenseInput.focus();
 });
 
+entryPendingToggle.addEventListener("click", () => {
+  setPendingEntryMode(!isPendingEntry);
+});
+
 entryProjectOptions.addEventListener("click", (event) => {
   const option = event.target.closest(".entry-project-option");
 
@@ -2887,9 +3254,13 @@ entryForm.addEventListener("submit", (event) => {
   event.preventDefault();
   formError.textContent = "";
 
-  const expense = parseExpense(expenseInput.value);
+  const expense = isPendingEntry
+    ? parsePendingExpense(expenseInput.value)
+    : parseExpense(expenseInput.value);
   if (!expense) {
-    formError.textContent = "请输入“事项 + 单价”，例如：地铁 2.9*2";
+    formError.textContent = isPendingEntry
+      ? "请先输入这笔账是什么，例如：朋友A的晚餐"
+      : "请输入“事项 + 单价”，例如：地铁 2.9*2";
     expenseInput.focus();
     return;
   }
@@ -2907,6 +3278,11 @@ editResult.addEventListener("click", () => {
 saveResult.addEventListener("click", saveExpense);
 
 document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && appScreen.dataset.pendingAmountOpen === "true") {
+    closePendingAmountDialog();
+    return;
+  }
+
   if (event.key === "Escape" && appScreen.dataset.withdrawOpen === "true") {
     closeWithdrawDialog();
     return;
@@ -2939,6 +3315,15 @@ document.addEventListener("keydown", (event) => {
   if (event.key === "Enter" && !confirmCard.hidden && appScreen.dataset.sheetOpen === "true") {
     event.preventDefault();
     saveExpense();
+  }
+
+  if (
+    event.key === "Enter" &&
+    appScreen.dataset.pendingAmountOpen === "true" &&
+    document.activeElement === pendingAmountInput
+  ) {
+    event.preventDefault();
+    confirmPendingAmount();
   }
 });
 

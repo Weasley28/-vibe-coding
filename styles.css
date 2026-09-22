@@ -355,6 +355,18 @@ input:focus-visible {
   transform: scale(1.03);
 }
 
+.date-item.is-no-spend .date-dot {
+  background: #a9d9c5;
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.72);
+}
+
+.date-item.is-no-spend.is-selected .date-dot {
+  background: #65b895;
+  box-shadow:
+    0 0 0 4px rgba(255, 255, 255, 0.7),
+    0 8px 16px rgba(60, 145, 108, 0.25);
+}
+
 .selected-date-chip {
   position: absolute;
   top: 304px;
@@ -687,6 +699,68 @@ input:focus-visible {
   line-height: 1.2;
 }
 
+.ledger-empty.is-no-spend {
+  background: linear-gradient(135deg, rgba(101, 184, 149, 0.24), rgba(255, 255, 255, 0.11));
+  box-shadow: inset 0 0 0 1px rgba(173, 231, 205, 0.32);
+}
+
+.ledger-no-spend-icon {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #a9d9c5;
+  color: #184c39;
+  font-size: 19px;
+  font-weight: 850;
+}
+
+.ledger-no-spend-button {
+  min-height: 34px;
+  margin-top: 3px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #255c48;
+  font-size: 12px;
+  font-weight: 760;
+  box-shadow: 0 8px 18px rgba(3, 22, 14, 0.12);
+}
+
+.ledger-empty:not(.is-no-spend) .ledger-no-spend-button {
+  background: #111111;
+  color: #ffffff;
+  box-shadow:
+    0 8px 18px rgba(0, 0, 0, 0.28),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.ledger-no-spend-status {
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 9px 6px 14px;
+  border-radius: 16px;
+  background: rgba(200, 235, 218, 0.94);
+  color: #245d47;
+  font-size: 12px;
+  font-weight: 780;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.18);
+}
+
+.ledger-no-spend-status button {
+  min-height: 27px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(36, 93, 71, 0.11);
+  color: #245d47;
+  font-size: 11px;
+  font-weight: 760;
+}
+
 .ledger-main {
   min-width: 0;
   display: grid;
@@ -733,6 +807,31 @@ input:focus-visible {
   background: rgba(251, 255, 132, 0.56);
   color: #4b4d00;
   font-weight: 720;
+}
+
+.ledger-pending {
+  flex: 0 0 auto;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(244, 177, 85, 0.2);
+  color: #8a5114;
+  font-weight: 760;
+}
+
+.ledger-item.is-pending {
+  background: linear-gradient(135deg, rgba(255, 252, 244, 0.98), rgba(255, 241, 214, 0.96));
+  box-shadow:
+    0 18px 34px rgba(0, 0, 0, 0.31),
+    inset 0 0 0 1px rgba(221, 151, 51, 0.18);
+}
+
+.ledger-item.is-pending .ledger-visual {
+  background: rgba(244, 177, 85, 0.22);
+}
+
+.ledger-item.is-pending .ledger-amount {
+  color: #a46115;
+  font-size: 14px;
 }
 
 .ledger-project {
@@ -1589,6 +1688,129 @@ input:focus-visible {
   transform: translate(-50%, 0);
 }
 
+.pending-amount-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 18;
+  background: rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 180ms ease;
+}
+
+.pending-amount-dialog {
+  position: absolute;
+  left: 42px;
+  right: 42px;
+  top: 50%;
+  z-index: 19;
+  padding: 21px;
+  border-radius: 27px;
+  background: #fffaf0;
+  color: #171717;
+  box-shadow: 0 26px 54px rgba(0, 0, 0, 0.46);
+  opacity: 0;
+  transform: translateY(-45%) scale(0.96);
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.app-screen[data-pending-amount-open="true"] .pending-amount-backdrop {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.app-screen[data-pending-amount-open="true"] .pending-amount-dialog {
+  opacity: 1;
+  transform: translateY(-50%) scale(1);
+}
+
+.pending-amount-kicker {
+  margin: 0 0 7px;
+  color: #a46115;
+  font-size: 12px;
+  font-weight: 780;
+}
+
+.pending-amount-dialog h2 {
+  margin: 0;
+  font-size: 22px;
+  line-height: 1.2;
+}
+
+.pending-amount-summary {
+  margin: 9px 0 16px;
+  color: rgba(17, 17, 17, 0.62);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.pending-amount-label {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 7px;
+  font-size: 13px;
+  font-weight: 720;
+}
+
+.pending-amount-currency {
+  color: rgba(17, 17, 17, 0.52);
+  font-size: 12px;
+}
+
+.pending-amount-input {
+  width: 100%;
+  height: 52px;
+  padding: 0 14px;
+  border: 1px solid rgba(127, 82, 25, 0.22);
+  border-radius: 17px;
+  background: #ffffff;
+  color: #111111;
+  font-size: 21px;
+  font-weight: 720;
+  font-variant-numeric: tabular-nums;
+}
+
+.pending-amount-error {
+  min-height: 18px;
+  margin: 5px 0 8px;
+  color: #b33f3f;
+  font-size: 12px;
+}
+
+.pending-amount-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+}
+
+.pending-amount-cancel,
+.pending-amount-save {
+  height: 47px;
+  border-radius: 16px;
+  font-size: 14px;
+  font-weight: 720;
+}
+
+.pending-amount-cancel {
+  background: rgba(0, 0, 0, 0.07);
+  color: #222222;
+}
+
+.pending-amount-save {
+  background: #171717;
+  color: #ffffff;
+}
+
+.pending-amount-remove {
+  width: 100%;
+  margin-top: 12px;
+  padding: 5px;
+  background: transparent;
+  color: #a14a45;
+  font-size: 12px;
+  font-weight: 680;
+}
+
 .withdraw-backdrop {
   position: absolute;
   inset: 0;
@@ -2015,6 +2237,15 @@ input:focus-visible {
   color: var(--positive);
 }
 
+.month-flow-record.is-pending {
+  background: rgba(255, 242, 216, 0.86);
+}
+
+.month-flow-record.is-pending b {
+  color: #a46115;
+  font-size: 11px;
+}
+
 .month-flow-empty {
   display: grid;
   justify-items: center;
@@ -2080,6 +2311,11 @@ input:focus-visible {
   background: rgba(255, 255, 255, 0.92);
 }
 
+.month-day.is-no-spend {
+  background: rgba(219, 241, 231, 0.92);
+  box-shadow: inset 0 0 0 1px rgba(76, 158, 124, 0.22);
+}
+
 .month-day.is-today {
   box-shadow:
     inset 0 0 0 1px rgba(117, 170, 184, 0.5),
@@ -2130,6 +2366,14 @@ input:focus-visible {
   color: rgba(35, 52, 65, 0.18);
 }
 
+.month-day-no-spend {
+  color: #3f936d;
+  font-size: 9px;
+  font-weight: 820;
+  line-height: 1;
+  white-space: nowrap;
+}
+
 .report-backdrop {
   position: absolute;
   inset: 0;
@@ -2162,6 +2406,7 @@ input:focus-visible {
 
 .report-dialog[hidden],
 .withdraw-dialog[hidden],
+.pending-amount-dialog[hidden],
 .month-detail-sheet[hidden],
 .entry-sheet[hidden] {
   display: none;
@@ -2604,6 +2849,83 @@ input:focus-visible {
   display: grid;
   grid-template-columns: 1fr 76px;
   gap: 9px;
+}
+
+.entry-pending-toggle {
+  width: 100%;
+  min-height: 54px;
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) 25px;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 11px;
+  border-radius: 17px;
+  background: rgba(244, 177, 85, 0.09);
+  color: var(--ink);
+  text-align: left;
+  box-shadow: inset 0 0 0 1px rgba(193, 126, 39, 0.14);
+}
+
+.entry-pending-toggle > span:nth-child(2) {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.entry-pending-toggle strong {
+  font-size: 13px;
+  line-height: 1.1;
+}
+
+.entry-pending-toggle small {
+  overflow: hidden;
+  color: var(--ink-soft);
+  font-size: 10px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.entry-pending-icon,
+.entry-pending-check {
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+}
+
+.entry-pending-icon {
+  width: 32px;
+  height: 32px;
+  background: rgba(244, 177, 85, 0.2);
+  color: #9a5b16;
+  font-size: 16px;
+  font-weight: 850;
+}
+
+.entry-pending-check {
+  width: 23px;
+  height: 23px;
+  background: rgba(17, 17, 17, 0.08);
+  color: transparent;
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.entry-pending-toggle.is-active {
+  background: #fff0d4;
+  box-shadow:
+    inset 0 0 0 1px rgba(193, 126, 39, 0.22),
+    0 8px 20px rgba(137, 83, 19, 0.08);
+}
+
+.entry-pending-toggle.is-active .entry-pending-check {
+  background: #b96f1c;
+  color: #ffffff;
+}
+
+.entry-form.is-pending-entry .entry-quantity-row,
+.entry-form.is-pending-entry .quick-examples {
+  display: none;
 }
 
 .entry-quantity-row {
@@ -3078,6 +3400,15 @@ input:focus-visible {
 
 .project-detail-record:active {
   transform: scale(0.985);
+}
+
+.project-detail-record.is-pending {
+  background: rgba(255, 241, 214, 0.82);
+}
+
+.project-detail-record.is-pending b {
+  color: #a46115;
+  font-size: 11px;
 }
 
 .project-detail-record-visual {
